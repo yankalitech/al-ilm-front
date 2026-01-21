@@ -22,9 +22,10 @@ import AddCourseScreen from '../screens/AddCourseScreen';
 import AddCategoriesScreen from '../screens/AddCategoriesScreen';
 import ListCategoriesScreen from '../screens/ListCategoriesScreen';
 import EditCategoryScreen from '../screens/EditCategoryScreen';
-import CoursesListScreen from '../screens/CoursesByCategScreen';
+import CoursesListScreen from '../screens/LivresByCategScreen';
 import ViewCourseScreen from '../screens/ViewCourseScreen';
 import EditCourseScreen from '../screens/EditCourseScreen';
+import CoursesByLivreScreen from '../screens/CoursesByLivreScreen';
 import LoginScreen from '../screens/LoginScreen';
 
 // Import du composant drawer personnalisé
@@ -60,6 +61,7 @@ function TeacherStackNavigator() {
       <Stack.Screen name="ListCours" component={CoursesListScreen} />
       <Stack.Screen name="CourseDetail" component={ViewCourseScreen} />
       <Stack.Screen name="EditCourse" component={EditCourseScreen} />
+      <Stack.Screen name="CoursesByLivre" component={CoursesByLivreScreen} />
     </Stack.Navigator>
   );
 }

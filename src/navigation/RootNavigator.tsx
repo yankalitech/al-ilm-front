@@ -6,10 +6,14 @@ import AddCourseScreen from '../screens/AddCourseScreen';
 import AddCategoriesScreen from '../screens/AddCategoriesScreen';
 import ListCategoriesScreen from '../screens/ListCategoriesScreen';
 import EditCategoryScreen from '../screens/EditCategoryScreen';
-import CoursesByCategScreen from '../screens/CoursesByCategScreen';
+
+import LivresByCategScreen from '../screens/LivresByCategScreen';
+import CoursesByLivreScreen from '../screens/CoursesByLivreScreen';
 import ViewCourseScreen from '../screens/ViewCourseScreen'
 import EditCourseScreen from '../screens/EditCourseScreen'
 import AdminLoginScreen from '../screens/LoginScreen'
+import ReadCourseScreen from '../screens/ReadCourseScreen'
+import SearchCourseScreen from '../screens/SearchCourseScreen'
 import ProfileScreen from '../screens/ProfileScreen'
 
 const Stack = createNativeStackNavigator();
@@ -42,7 +46,15 @@ export default function RootNavigator() {
         options={{
           headerShown: false, // Masquer l'en-tête de navigation
         }}/>
-        <Stack.Screen name="CategoryCourses" component={CoursesByCategScreen} 
+        <Stack.Screen name="CategoryCourses" component={LivresByCategScreen} 
+        options={{
+          headerShown: false, // Masquer l'en-tête de navigation
+        }}/>
+         <Stack.Screen name="Search" component={SearchCourseScreen} 
+        options={{
+          headerShown: false, // Masquer l'en-tête de navigation
+        }}/>
+        <Stack.Screen name="CoursesByLivre" component={CoursesByLivreScreen} 
         options={{
           headerShown: false, // Masquer l'en-tête de navigation
         }}/>
@@ -55,6 +67,10 @@ export default function RootNavigator() {
           headerShown: false, // Masquer l'en-tête de navigation
         }}/>
          <Stack.Screen name="Profile" component={ProfileScreen} 
+        options={{
+          headerShown: false, // Masquer l'en-tête de navigation
+        }}/>
+         <Stack.Screen name="ReadCourseScreen" component={ReadCourseScreen} 
         options={{
           headerShown: false, // Masquer l'en-tête de navigation
         }}/>

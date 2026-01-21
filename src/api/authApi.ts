@@ -3,7 +3,7 @@ import useAuthStore from '../store/useAuthStore';
 import {getStoredToken} from '../utils/storageUtils'
 
 //export const API_BASE_URL = 'https://al-ilm-test.dev-ci-cd.com/';
-export const API_BASE_URL = 'http://192.168.100.5:3000/'
+export const API_BASE_URL = 'http://192.168.1.108:3000/'
 export const options = {
   'Authorization' : `Bearer ${getStoredToken()}`
 }

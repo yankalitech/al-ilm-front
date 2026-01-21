@@ -204,20 +204,56 @@ export async function getCoursByCategory(categorieId: string) {
 }
 
 // Rechercher des cours
-export async function searchCours(query: string) {
+export const searchCourses = async (query: string, token: string): Promise<CoursData[]> => {
+  if (!query.trim()) return [];
+
   try {
+    // On encode la requête pour gérer les espaces et caractères spéciaux
+    const encodedQuery = encodeURIComponent(query);
     const options = await getAuthOptions()
-    const response = await fetch(`${API_BASE_URL}api/courses/search?q=${encodeURIComponent(query)}`);
+    const response = await fetch(`${API_BASE_URL}/api/courses/search?q=${encodedQuery}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options
+      },
+    });
 
     if (!response.ok) {
-      throw new Error(`Erreur API: ${response.status}`);
+      console.error('Erreur recherche:', response.status);
+      return [];
     }
 
-    const data = await response.json();
-    console.log('data return cours search ----', data)
+    const data: CoursData[] = await response.json();
     return data;
   } catch (error) {
-    console.error('Erreur lors de la recherche de cours :', error);
-    throw error;
+    console.error('Erreur réseau:', error);
+    return [];
   }
-}
+};
+
+
+export const getNewCourses = async (): Promise<CoursData[]> => {
+  try {
+
+    const options = await getAuthOptions()
+    const response = await fetch(`${API_BASE_URL}/api/courses/new`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options
+      },
+    });
+
+    if (!response.ok) {
+      console.error('Erreur récupération nouveautés:', response.status);
+      return [];
+    }
+
+    const data: CoursData[] = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Erreur réseau:', error);
+    return [];
+  }
+};

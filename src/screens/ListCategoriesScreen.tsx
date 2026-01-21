@@ -95,6 +95,12 @@ const CategoriesListScreen = () => {
     setShowOptionsModal(true);
   };
 
+
+  const handleViewLivres = () => {
+    setShowOptionsModal(false);
+    navigation.navigate('ListCours', { categoryId: selectedCategory.id, categoryName: selectedCategory.nom });
+  };
+
   const handleEditCategory = () => {
     setShowOptionsModal(false);
     // Navigation vers la page d'édition
@@ -384,6 +390,24 @@ const CategoriesListScreen = () => {
                     <Ionicons name="create-outline" size={20} color={colors.text} />
                     <Text style={{ marginLeft: 12, fontSize: 16, color: colors.text }}>
                       Modifier
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 12,
+                      paddingHorizontal: 16,
+                      borderRadius: 8,
+                      backgroundColor: colors.border + '50',
+                      marginTop: 10,
+                    }}
+                    onPress={handleViewLivres}
+                  >
+                    <Ionicons name="book-outline" size={20} color={colors.text} />
+                    <Text style={{ marginLeft: 12, fontSize: 16, color: colors.text }}>
+                      Voir les livres
                     </Text>
                   </TouchableOpacity>
 

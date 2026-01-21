@@ -9,11 +9,14 @@ import {
   Image,
   FlatList,
   StyleSheet,
-  Dimensions
+  Dimensions,
+  RefreshControl
 } from 'react-native';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { useCategoriesStore } from '../store/useCategoriesStore' 
+import {getCategoriesList} from '../api/categoriesApi'
+import { getNewCourses } from '../api/coursesApi';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) * 0.45;
@@ -25,9 +28,9 @@ const HomeScreen = () => {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
   const [publications, setPublications] = useState([]);
-  const [categories_elt, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const {  categories, fetchStats, deleteCategory } = useCategoriesStore()
+  const [refreshing, setRefreshing] = useState(false);
+  const {  categories, fetchStats } = useCategoriesStore()
 
   useEffect(() => {
     loadData();
@@ -47,45 +50,40 @@ const HomeScreen = () => {
     }
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
+
+  const formatDuration = (seconds: any) => {
+    if (!seconds) return 'N/A';
+    const totalSeconds = parseInt(seconds, 10);
+    const minutes = Math.floor(totalSeconds / 60);
+    const remainingSeconds = totalSeconds % 60;
+    return `${minutes} min ${remainingSeconds} s`;
+  };
+
   const loadPublications = async () => {
-    // TODO: Remplacer par votre appel API
-    // Exemple: const response = await fetch('YOUR_API_URL/publications');
-    // const data = await response.json();
-    
-    // Structure attendue de l'API:
-    // {
-    //   id: string,
-    //   titre: string,
-    //   type: 'Audio' | 'Video',
-    //   duree: string,
-    //   image_url: string,
-    // }
-    
-    const mockData = [
-      {
-        id: '1',
-        titre: 'The Essence of Faith',
-        type: 'Audio',
-        duree: '2h 30m',
-        image_url: null,
-      },
-      {
-        id: '2',
-        titre: 'Understanding Islamic Law',
-        type: 'Video',
-        duree: '1h 45m',
-        image_url: null,
-      },
-      {
-        id: '3',
-        titre: 'Exploring Tafsir',
-        type: 'Audio',
-        duree: '3h 15m',
-        image_url: null,
-      },
-    ];
-    
-    setPublications(mockData);
+    try {
+      const response = await getNewCourses();
+      console.log('data cours ', response)
+      const data = response?.data || response || [];
+      console.log('data cours ', data)
+      const formattedData = Array.isArray(data) ? data.map((item: any) => ({
+        id: item.id,
+        titre: item.titre,
+        type: item.type === 'VIDEO' ? 'Video' : item.type === 'AUDIO' ? 'Audio' : item.type,
+        duree: formatDuration(item.duree),
+        image_url: item.miniatureAccessUrl || null,
+      })) : [];
+
+      setPublications(formattedData);
+    } catch (error) {
+      console.error('Erreur lors du chargement des publications:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   
@@ -102,19 +100,7 @@ const HomeScreen = () => {
     //   icone: string, // Nom de l'icône Ionicons
     // }
     
-    const mockData = [
-      { id: '1', nom: 'Aqîda', icone: 'book-outline' },
-      { id: '2', nom: 'Fiqh', icone: 'scale-outline' },
-      { id: '3', nom: 'Ulum al-Qur\'ân', icone: 'reader-outline' },
-      { id: '4', nom: 'Hadith', icone: 'library-outline' },
-      { id: '5', nom: 'Seerah', icone: 'people-outline' },
-      { id: '6', nom: 'Islamic History', icone: 'globe-outline' },
-    ];
-    const response = await fetchStats();
-    console.log('value response ', response)
-    setCategories(response?.data);
-    
-    // setCategories(mockData);
+    await fetchStats();
   };
 
   const handleSearch = () => {
@@ -130,7 +116,8 @@ const HomeScreen = () => {
   const handleCategoryPress = (category: any) => {
     // Navigation vers la liste des cours de cette catégorie
     navigation.navigate('CategoryCourses', { 
-      categoryId: category.id
+      categoryId: category.id, 
+      categoryName: category.nom 
     });
   };
 
@@ -191,6 +178,14 @@ const HomeScreen = () => {
       <ScrollView 
         style={styles.container}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
@@ -216,7 +211,7 @@ const HomeScreen = () => {
 
         {/* New Publications */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>New Publications</Text>
+          <Text style={styles.sectionTitle}>Nouvelles Publications</Text>
           
           {publications.length > 0 ? (
             <FlatList

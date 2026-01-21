@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "NomDuProjet.app"
-               BlueprintName = "NomDuProjet"
-               ReferencedContainer = "container:NomDuProjet.xcodeproj">
+               BuildableName = "ilmMohamadouladan.app"
+               BlueprintName = "ilmMohamadouladan"
+               ReferencedContainer = "container:ilmMohamadouladan.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "NomDuProjetTests.xctest"
-               BlueprintName = "NomDuProjetTests"
-               ReferencedContainer = "container:NomDuProjet.xcodeproj">
+               BuildableName = "ilmMohamadouladanTests.xctest"
+               BlueprintName = "ilmMohamadouladanTests"
+               ReferencedContainer = "container:ilmMohamadouladan.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "NomDuProjet.app"
-            BlueprintName = "NomDuProjet"
-            ReferencedContainer = "container:NomDuProjet.xcodeproj">
+            BuildableName = "ilmMohamadouladan.app"
+            BlueprintName = "ilmMohamadouladan"
+            ReferencedContainer = "container:ilmMohamadouladan.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "NomDuProjet.app"
-            BlueprintName = "NomDuProjet"
-            ReferencedContainer = "container:NomDuProjet.xcodeproj">
+            BuildableName = "ilmMohamadouladan.app"
+            BlueprintName = "ilmMohamadouladan"
+            ReferencedContainer = "container:ilmMohamadouladan.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
