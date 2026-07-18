@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
   Image,
   FlatList,
@@ -12,6 +11,7 @@ import {
   Dimensions,
   RefreshControl
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { useCategoriesStore } from '../store/useCategoriesStore' 
@@ -23,6 +23,7 @@ const CARD_WIDTH = (width - 48) * 0.45;
 
 // Import de vos styles globaux
 import { colors, spacing, typography } from '../styles/globalStyles';
+import BottomNav from '../components/BottomNav';
 
 const HomeScreen = () => {
   const navigation = useNavigation();
@@ -109,8 +110,7 @@ const HomeScreen = () => {
   };
 
   const handlePublicationPress = (publication: any) => {
-    // Navigation vers les détails de la publication
-    navigation.navigate('PublicationDetails', { id: publication.id });
+    navigation.navigate('CourseDetail', { id: publication.id });
   };
 
   const handleCategoryPress = (category: any) => {
@@ -174,8 +174,8 @@ const HomeScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView 
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <ScrollView
         style={styles.container}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -255,42 +255,27 @@ const HomeScreen = () => {
 
         {/* Quick Access */}
         <View style={[styles.section, { marginBottom: spacing.xxl }]}>
-          <Text style={styles.sectionTitle}>Quick Access</Text>
+          <Text style={styles.sectionTitle}>Accès rapide</Text>
           <View style={styles.quickAccessContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.quickAccessButton}
               onPress={() => navigation.navigate('Downloads')}
             >
-              <Text style={styles.quickAccessText}>My Downloads</Text>
+              <Ionicons name="download-outline" size={20} color={colors.text} style={{ marginBottom: 4 }} />
+              <Text style={styles.quickAccessText}>Mes Téléchargements</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.quickAccessButton}
               onPress={() => navigation.navigate('ContinueListening')}
             >
-              <Text style={styles.quickAccessText}>Continue Listening</Text>
+              <Ionicons name="headset-outline" size={20} color={colors.text} style={{ marginBottom: 4 }} />
+              <Text style={styles.quickAccessText}>Mes Écoutes</Text>
             </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
 
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="home" size={24} color={colors.primary} />
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Bookmarks')}
-        >
-          <Ionicons name="bookmark-outline" size={24} color={colors.textSecondary} />
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Profile')}
-        >
-          <Ionicons name="person-outline" size={24} color={colors.textSecondary} />
-        </TouchableOpacity>
-      </View>
+      <BottomNav />
     </SafeAreaView>
   );
 };
@@ -441,14 +426,15 @@ const styles = StyleSheet.create({
   bottomNav: {
     flexDirection: 'row',
     backgroundColor: colors.surface,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: '#4A5568',
   },
   navItem: {
     flex: 1,
     alignItems: 'center',
+    paddingVertical: spacing.xs,
   },
   emptyState: {
     paddingHorizontal: spacing.lg,

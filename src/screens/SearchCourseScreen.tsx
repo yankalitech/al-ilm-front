@@ -5,17 +5,18 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   FlatList,
   Image,
   StyleSheet,
   ActivityIndicator,
   Keyboard
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { searchCourses } from '../api/coursesApi';
 import { colors, spacing } from '../styles/globalStyles';
+import BottomNav from '../components/BottomNav';
 
 type SearchScreenRouteProp = RouteProp<{ Search: { query: string } }, 'Search'>;
 
@@ -115,7 +116,7 @@ const SearchScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       {/* Header avec barre de recherche */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -170,6 +171,7 @@ const SearchScreen = () => {
           )}
         />
       )}
+      <BottomNav />
     </SafeAreaView>
   );
 };

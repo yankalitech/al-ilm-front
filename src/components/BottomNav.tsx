@@ -1,46 +1,37 @@
 import React from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { Ionicons } from '@react-native-vector-icons/ionicons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useNavigationState } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors, spacing } from '../styles/globalStyles';
 
-
+const TABS = [
+  { route: 'Home', label: 'Accueil', icon: 'home-outline' },
+  { route: 'Downloads', label: 'Téléchargements', icon: 'download-outline' },
+  { route: 'ContinueListening', label: 'Écoutes', icon: 'headset-outline' },
+  { route: 'Profile', label: 'Profil', icon: 'person-outline' },
+] as const
 
 export default function BottomNav() {
   const navigation = useNavigation();
-  const handleHomePress = () => {
-    navigation.navigate('Home');
-  };
-
-  const handleCoursesPress = () => {
-    navigation.navigate('ListCours');
-  };
-
-  const handleProfilePress = () => {
-    navigation.navigate('Profile');
-  };
-
-  const handleAdminPress = () => {
-    navigation.navigate('AdminLogin');
-  };
+  const insets = useSafeAreaInsets();
+  const currentRoute = useNavigationState((state) => state?.routes[state.index]?.name);
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity style={styles.item} onPress={handleHomePress}>
-        <Ionicons name="home-outline" size={22} color="#fff" />
-        <Text style={styles.text}>Home</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.item} onPress={handleCoursesPress}>
-        <Ionicons name="play-circle-outline" size={22} color="#fff" />
-        <Text style={styles.text}>Courses</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.item}  onPress={handleProfilePress}>
-        <Ionicons name="person-outline" size={22} color="#fff" />
-        <Text style={styles.text}>Profile</Text>
-      </TouchableOpacity>
-      {/* <TouchableOpacity style={styles.item} onPress={handleAdminPress}>
-        <Ionicons name="settings-outline" size={22} color="#3b82f6" />
-        <Text style={[styles.text, styles.adminText]}>Admin</Text>
-      </TouchableOpacity> */}
+    <View style={[styles.container, { paddingBottom: insets.bottom || spacing.sm }]}>
+      {TABS.map((tab) => {
+        const isActive = currentRoute === tab.route
+        return (
+          <TouchableOpacity
+            key={tab.route}
+            style={styles.item}
+            onPress={() => navigation.navigate(tab.route as never)}
+          >
+            <Ionicons name={tab.icon} size={22} color={isActive ? colors.primary : colors.textSecondary} />
+            <Text style={[styles.text, isActive && styles.textActive]}>{tab.label}</Text>
+          </TouchableOpacity>
+        )
+      })}
     </View>
   )
 }
@@ -48,18 +39,22 @@ export default function BottomNav() {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.surface,
     justifyContent: 'space-around',
-    paddingVertical: 10,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   item: {
     alignItems: 'center',
   },
   text: {
-    color: '#fff',
+    color: colors.textSecondary,
+    fontSize: 11,
     marginTop: 2,
   },
-  adminText: {
-    color: '#3b82f6', // Couleur bleue pour différencier le bouton admin
+  textActive: {
+    color: colors.primary,
+    fontWeight: '600',
   },
 })

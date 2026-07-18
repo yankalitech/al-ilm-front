@@ -1,4 +1,5 @@
 import {API_BASE_URL, getAuthOptions} from "./authApi"
+import {Livre} from "./livresApi"
 
 // Interface pour les données de cours
 export interface CoursData {
@@ -22,6 +23,19 @@ export interface CoursUpdateData {
   miniature?: File
 }
 
+export interface Cours {
+  id: string;
+  titre: string;
+  description: string | null;
+  type: 'AUDIO' | 'VIDEO';
+  duree: number; // en secondes
+  etat: 'NOUVEAU' | 'EN_COURS' | 'PUBLIE';
+  datePublication: string;
+  miniatureAccessUrl: string | null; // L'URL signée (ou celle du livre en fallback)
+  fichierAccessUrl: string | null; // L'URL signée (ou celle du livre en fallback)
+  livreId: string;
+  livre?: Livre; // L'API inclut les infos du livre
+}
 
 
 // Récupérer la liste de tous les cours

@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   Switch,
   FlatList,
   Modal,
@@ -14,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 // import { Ionicons } from '@react-native-vector-icons/ionicons';;
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { globalStyles, colors } from '../styles/globalStyles';

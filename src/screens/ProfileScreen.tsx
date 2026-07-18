@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
   Alert,
   Modal,
@@ -11,9 +10,11 @@ import {
   BackHandler,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { globalStyles, colors } from '../styles/globalStyles';
+import BottomNav from '../components/BottomNav';
 
 // Clés de stockage
 const STORAGE_KEYS = {
@@ -196,7 +197,7 @@ const ProfileScreen = ({ navigation }: any) => {
   ];
 
   return (
-    <SafeAreaView style={globalStyles.safeArea}>
+    <SafeAreaView style={globalStyles.safeArea} edges={['top', 'left', 'right']}>
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -443,6 +444,7 @@ const ProfileScreen = ({ navigation }: any) => {
           </View>
         </View>
       </Modal>
+      <BottomNav />
     </SafeAreaView>
   );
 };

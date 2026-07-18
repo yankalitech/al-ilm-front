@@ -4,18 +4,19 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
   Dimensions,
   StatusBar
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Video from 'react-native-video';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { getCoursElement } from '../api/coursesApi';
 import { colors, spacing } from '../styles/globalStyles';
+import BottomNav from '../components/BottomNav';
 
 const { width } = Dimensions.get('window');
 const VIDEO_HEIGHT = width * 0.5625; // 16:9 aspect ratio
@@ -67,7 +68,7 @@ const CoursePlayerScreen = () => {
   const thumbnailUrl = course.miniatureAccessUrl;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       
       {/* Section Lecteur Média */}
@@ -144,6 +145,7 @@ const CoursePlayerScreen = () => {
         
         <View style={{ height: 40 }} />
       </ScrollView>
+      <BottomNav />
     </SafeAreaView>
   );
 };

@@ -1,200 +1,39 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
+  StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
   Image,
+  ActivityIndicator,
+  ScrollView,
+  Animated,
+  Alert,
   Dimensions,
-  Share,
-  Modal,
-  StyleSheet
 } from 'react-native';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import Video from 'react-native-video';
-import { globalStyles, colors } from '../styles/globalStyles';
-import { useCoursStore } from '../store/useCourseStore';
-import { useCategoriesStore } from '../store/useCategoriesStore';
+import NetInfo from '@react-native-community/netinfo';
+import { getCoursElement, Cours } from '../api/coursesApi';
+import { useHistoryStore } from '../store/useHistoryStore';
+import { useDownloadsStore } from '../store/useDownloadsStore';
+import {
+  getLocalFilePath,
+  isFileDownloaded,
+  downloadFileToDevice,
+  removeLocalFilePath,
+} from '../utils/offlineUtils';
+import { colors, spacing } from '../styles/globalStyles';
 
 const { width } = Dimensions.get('window');
 
-// Composant de lecture audio/vidéo
-const MediaPlayer = ({ uri, type, title, onClose }) => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
-  const videoRef = useRef(null);
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
-  };
-
-  const handleSeek = (value) => {
-    if (videoRef.current && duration > 0) {
-      const seekTime = (value / 100) * duration;
-      videoRef.current.seek(seekTime);
-      setCurrentTime(seekTime);
-    }
-  };
-
-  const handleLoad = (data) => {
-    setDuration(data.duration);
-    setIsLoading(false);
-    setHasError(false);
-  };
-
-  const handleProgress = (data) => {
-    setCurrentTime(data.currentTime);
-  };
-
-  const handleError = (error) => {
-    console.error('Erreur de lecture:', error);
-    setHasError(true);
-    setIsLoading(false);
-    Alert.alert('Erreur', 'Impossible de lire ce fichier média');
-  };
-
-  const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
-
-  return (
-    <Modal visible={true} animationType="slide" presentationStyle="pageSheet">
-      <SafeAreaView style={styles.modalContainer}>
-        {/* Header du lecteur */}
-        <View style={styles.playerHeader}>
-          <TouchableOpacity onPress={onClose}>
-            <Ionicons name="close" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.playerTitle} numberOfLines={1}>
-            {title}
-          </Text>
-          <View style={{ width: 24 }} />
-        </View>
-
-        <View style={styles.playerContent}>
-          {/* Lecteur vidéo/audio */}
-          <View style={[
-            styles.videoContainer, 
-            type === 'AUDIO' && styles.audioContainer
-          ]}>
-            <Video
-              ref={videoRef}
-              source={{ uri }}
-              style={type === 'VIDEO' ? styles.video : styles.audio}
-              paused={!isPlaying}
-              resizeMode="contain"
-              onLoad={handleLoad}
-              onProgress={handleProgress}
-              onError={handleError}
-              onEnd={() => setIsPlaying(false)}
-              controls={false}
-              repeat={false}
-            />
-
-            {/* Overlay pour audio avec icône */}
-            {type === 'AUDIO' && (
-              <View style={styles.audioOverlay}>
-                <Ionicons 
-                  name="musical-notes" 
-                  size={80} 
-                  color={colors.primary} 
-                />
-                <Text style={styles.audioTitle}>{title}</Text>
-              </View>
-            )}
-
-            {/* Indicateur de chargement */}
-            {isLoading && (
-              <View style={styles.loadingOverlay}>
-                <ActivityIndicator size="large" color={colors.primary} />
-                <Text style={styles.loadingText}>Chargement...</Text>
-              </View>
-            )}
-
-            {/* Message d'erreur */}
-            {hasError && (
-              <View style={styles.errorOverlay}>
-                <Ionicons name="alert-circle" size={60} color="#dc3545" />
-                <Text style={styles.errorText}>
-                  Erreur de lecture
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* Contrôles de lecture */}
-          {!hasError && (
-            <View style={styles.controls}>
-              {/* Barre de progression */}
-              <View style={styles.progressContainer}>
-                <Text style={styles.timeText}>
-                  {formatTime(currentTime)}
-                </Text>
-                <View style={styles.progressBar}>
-                  <View 
-                    style={[
-                      styles.progressFill, 
-                      { width: `${progressPercentage}%` }
-                    ]} 
-                  />
-                  <TouchableOpacity
-                    style={[
-                      styles.progressThumb,
-                      { left: `${progressPercentage}%` }
-                    ]}
-                    onPress={() => {}}
-                  />
-                </View>
-                <Text style={styles.timeText}>
-                  {formatTime(duration)}
-                </Text>
-              </View>
-
-              {/* Boutons de contrôle */}
-              <View style={styles.controlButtons}>
-                <TouchableOpacity
-                  style={styles.controlButton}
-                  onPress={() => handleSeek(Math.max(0, progressPercentage - 10))}
-                >
-                  <Ionicons name="play-back" size={24} color={colors.text} />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.controlButton, styles.playButton]}
-                  onPress={handlePlayPause}
-                  disabled={isLoading}
-                >
-                  <Ionicons 
-                    name={isPlaying ? "pause" : "play"} 
-                    size={32} 
-                    color="#fff" 
-                  />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.controlButton}
-                  onPress={() => handleSeek(Math.min(100, progressPercentage + 10))}
-                >
-                  <Ionicons name="play-forward" size={24} color={colors.text} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-        </View>
-      </SafeAreaView>
-    </Modal>
-  );
-};
+interface RouteParams {
+  coursId?: string;
+  id?: string;
+  resumePosition?: number;
+}
 
 // Composant Image sécurisé avec gestion d'erreur
 const SafeImage = ({ source, style, fallbackIcon = "image-outline" }) => {
@@ -215,14 +54,11 @@ const SafeImage = ({ source, style, fallbackIcon = "image-outline" }) => {
   if (imageError) {
     return (
       <View style={[style, { 
-        backgroundColor: '#f0f0f0', 
+        backgroundColor: '#2D3748', 
         justifyContent: 'center', 
         alignItems: 'center' 
       }]}>
-        <Ionicons name={fallbackIcon} size={40} color="#ccc" />
-        <Text style={{ fontSize: 12, color: '#999', marginTop: 5 }}>
-          Image indisponible
-        </Text>
+        <Ionicons name={fallbackIcon} size={60} color="#C4A962" />
       </View>
     );
   }
@@ -242,550 +78,590 @@ const SafeImage = ({ source, style, fallbackIcon = "image-outline" }) => {
           position: 'absolute',
           justifyContent: 'center',
           alignItems: 'center',
-          backgroundColor: '#f0f0f0'
+          backgroundColor: '#2D3748'
         }]}>
-          <ActivityIndicator size="small" color="#666" />
+          <ActivityIndicator size="small" color="#5B9FED" />
         </View>
       )}
     </View>
   );
 };
 
-// Fonction utilitaire pour nettoyer les URLs Google Cloud
-const cleanGoogleCloudUrl = (url) => {
-  if (!url) return null;
-  
-  try {
-    // Décoder les caractères encodés dans l'URL
-    const decodedUrl = decodeURIComponent(url);
-    
-    // Vérifier si l'URL est bien formée
-    new URL(decodedUrl);
-    
-    return decodedUrl;
-  } catch (error) {
-    console.error('URL invalide:', error);
-    return null;
-  }
-};
+const CourseDetailScreen: React.FC = () => {
+  const navigation = useNavigation();
+  const route = useRoute();
+  const insets = useSafeAreaInsets();
+  const params = route.params as RouteParams;
+  const courseId = params.id || params.coursId || '';
+  const resumePosition = params.resumePosition;
 
-const ViewCourseScreen = ({ route, navigation }) => {
-  const { courseId } = route.params;
-  
-  // États locaux
-  const [course, setCourse] = useState(null);
+  const { saveProgress, getProgressForCourse, fetchHistory } = useHistoryStore();
+  const { addDownload } = useDownloadsStore();
+
+  const [cours, setCours] = useState<Cours | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [showPlayer, setShowPlayer] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [isMediaLoading, setIsMediaLoading] = useState(false);
+  const [hasMediaError, setHasMediaError] = useState(false);
 
-  // Stores Zustand
-  const { viewCours, deleteCours } = useCoursStore();
-  const { categories } = useCategoriesStore();
+  // Download state
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [isDownloaded, setIsDownloaded] = useState(false);
 
-  // Charger les détails du cours
+  // Offline state
+  const [mediaUri, setMediaUri] = useState<string>('');
+  const [isOffline, setIsOffline] = useState(false);
+
+  const videoRef = useRef<Video>(null);
+  const descriptionHeight = useRef(new Animated.Value(0)).current;
+  const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const currentTimeRef = useRef(0);
+
   useEffect(() => {
-    loadCourseDetails();
+    loadCours();
+    return () => {
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+    };
   }, [courseId]);
 
-  const loadCourseDetails = async () => {
+  useEffect(() => {
+    Animated.timing(descriptionHeight, {
+      toValue: isDescriptionExpanded ? 1 : 0,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [isDescriptionExpanded]);
+
+  // Start/stop progress save interval based on play state
+  useEffect(() => {
+    if (isPlaying) {
+      progressTimerRef.current = setInterval(() => {
+        if (currentTimeRef.current > 0) {
+          saveProgress(courseId, Math.floor(currentTimeRef.current));
+        }
+      }, 5000);
+    } else {
+      if (progressTimerRef.current) {
+        clearInterval(progressTimerRef.current);
+        progressTimerRef.current = null;
+      }
+    }
+    return () => {
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+    };
+  }, [isPlaying, courseId]);
+
+  const loadCours = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const courseData = await viewCours(courseId);
-      
-      // Debug pour les URLs d'images
-      console.log('URL miniature reçue:', courseData?.miniatureAccessUrl);
-      console.log('URL nettoyée:', courseData?.miniatureAccessUrl);
-      // cleanGoogleCloudUrl(courseData?.miniatureAccessUrl)
-      setCourse(courseData);
-      setError(null);
-    } catch (err) {
-      console.error('Erreur lors du chargement du cours:', err);
-      setError('Impossible de charger les détails du cours');
+      const [netState, localPath] = await Promise.all([
+        NetInfo.fetch(),
+        getLocalFilePath(courseId),
+        fetchHistory(), // safe: has its own error handling, won't throw
+      ]);
+      const connected = !!netState.isConnected;
+      setIsOffline(!connected);
+      setIsDownloaded(!!localPath);
+
+      if (localPath) {
+        setMediaUri(`file://${localPath}`);
+      }
+
+      if (connected) {
+        const data = await getCoursElement(courseId);
+        setCours(data);
+        setDuration(data.duree);
+        if (!localPath) {
+          setMediaUri(data.fichierAccessUrl || '');
+        }
+      } else if (!localPath) {
+        Alert.alert('Hors-ligne', 'Ce cours n\'est pas disponible hors-ligne.');
+      }
+
+      // History is now loaded — safe to read saved position
+      const savedProgress = getProgressForCourse(courseId);
+      const resumeAt = resumePosition ?? savedProgress?.position;
+      if (resumeAt && resumeAt > 0) {
+        setTimeout(() => {
+          if (videoRef.current) videoRef.current.seek(resumeAt);
+          setCurrentTime(resumeAt);
+          currentTimeRef.current = resumeAt;
+        }, 800);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement du cours:', error);
+      Alert.alert('Erreur', 'Impossible de charger les détails du cours');
     } finally {
       setLoading(false);
     }
   };
 
-  // Obtenir les informations de la catégorie
-  const getCategoryInfo = () => {
-    if (!course?.categorieId || !categories) return null;
-    return categories.find(cat => cat.id === course.categorieId);
+  const togglePlayPause = () => {
+    setIsPlaying(!isPlaying);
   };
 
-  // Formater la taille du fichier
-  const formatFileSize = (bytes) => {
-    if (!bytes) return 'N/A';
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+  const seekBackward = () => {
+    const newPosition = Math.max(0, currentTime - 15);
+    if (videoRef.current) {
+      videoRef.current.seek(newPosition);
+    }
+    setCurrentTime(newPosition);
   };
 
-  // Formater la date
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const seekForward = () => {
+    const newPosition = Math.min(duration, currentTime + 15);
+    if (videoRef.current) {
+      videoRef.current.seek(newPosition);
+    }
+    setCurrentTime(newPosition);
   };
 
-  // Obtenir le badge d'état
-  const getEtatBadge = () => {
-    const etats = {
-      'NOUVEAU': { label: 'Nouveau', color: '#28a745', bgColor: '#d4edda' },
-      'EN_COURS': { label: 'En cours', color: '#ffc107', bgColor: '#fff3cd' },
-      'PUBLIE': { label: 'Publié', color: '#17a2b8', bgColor: '#d1ecf1' }
-    };
-    
-    const etatInfo = etats[course?.etat] || etats.NOUVEAU;
-    
-    return (
-      <View style={{
-        backgroundColor: etatInfo.bgColor,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 15,
-        alignSelf: 'flex-start'
-      }}>
-        <Text style={{
-          color: etatInfo.color,
-          fontSize: 12,
-          fontWeight: 'bold'
-        }}>
-          {etatInfo.label}
-        </Text>
-      </View>
-    );
+  const handleSeek = (value: number) => {
+    if (videoRef.current && duration > 0) {
+      const seekTime = (value / 100) * duration;
+      videoRef.current.seek(seekTime);
+      setCurrentTime(seekTime);
+    }
   };
 
-  // Supprimer le cours
-  const handleDelete = () => {
-    Alert.alert(
-      'Confirmer la suppression',
-      'Êtes-vous sûr de vouloir supprimer ce cours ? Cette action est irréversible.',
-      [
-        {
-          text: 'Annuler',
-          style: 'cancel'
-        },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteCours(courseId);
-              Alert.alert('Succès', 'Le cours a été supprimé avec succès');
-              navigation.navigate('ListCours');
-            } catch (error) {
-              Alert.alert('Erreur', 'Impossible de supprimer le cours');
-            }
-          }
-        }
-      ]
-    );
+  const onLoad = (data: any) => {
+    setDuration(data.duration);
+    setIsMediaLoading(false);
+    setHasMediaError(false);
   };
 
-  // Partager le cours
-  const handleShare = async () => {
+  const onProgress = (data: any) => {
+    setCurrentTime(data.currentTime);
+    currentTimeRef.current = data.currentTime;
+  };
+
+  const onError = (error: any) => {
+    console.error('Erreur de lecture:', error);
+    setHasMediaError(true);
+    setIsMediaLoading(false);
+    Alert.alert('Erreur', 'Impossible de lire ce fichier média');
+  };
+
+  const onEnd = () => {
+    setIsPlaying(false);
+    setCurrentTime(0);
+    currentTimeRef.current = 0;
+    if (videoRef.current) {
+      videoRef.current.seek(0);
+    }
+    // Mark as completed
+    saveProgress(courseId, duration > 0 ? duration : Math.floor(currentTimeRef.current), true);
+  };
+
+  const handleDownload = async () => {
+    if (isDownloaded) {
+      Alert.alert(
+        'Supprimer le fichier local',
+        'Supprimer le fichier téléchargé de cet appareil ?',
+        [
+          { text: 'Annuler', style: 'cancel' },
+          {
+            text: 'Supprimer',
+            style: 'destructive',
+            onPress: async () => {
+              await removeLocalFilePath(courseId);
+              setIsDownloaded(false);
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    if (!cours) return;
+    setIsDownloading(true);
+    setDownloadProgress(0);
+
     try {
-      await Share.share({
-        message: `Découvrez ce cours : ${course.titre}\n${course.description || ''}`,
-        title: course.titre,
+      // Record download server-side and get signed URL
+      const signedUrl = await addDownload(courseId);
+      if (!signedUrl) throw new Error('URL de téléchargement non disponible');
+
+      // Determine file extension from URL or type
+      const ext = cours.type === 'AUDIO' ? 'mp3' : 'mp4';
+      const fileName = `${cours.titre.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${ext}`;
+
+      await downloadFileToDevice(courseId, signedUrl, fileName, (p) => {
+        setDownloadProgress(p);
       });
+
+      setIsDownloaded(true);
+      Alert.alert('Téléchargement terminé', 'Ce cours est maintenant disponible hors-ligne.');
     } catch (error) {
-      console.error('Erreur lors du partage:', error);
+      console.error('Erreur téléchargement:', error);
+      Alert.alert('Erreur', 'Le téléchargement a échoué. Veuillez réessayer.');
+    } finally {
+      setIsDownloading(false);
+      setDownloadProgress(0);
     }
   };
 
-  // Naviguer vers la page de modification
-  const handleEdit = () => {
-    navigation.navigate('EditCourse', { courseId: course.id });
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Ouvrir le lecteur média
-  const handlePlayMedia = () => {
-    if (!course.fichierAccessUrl) {
-      Alert.alert('Erreur', 'Aucun fichier disponible pour la lecture');
-      return;
-    }
-
-    const cleanedUrl = course.fichierAccessUrl;
-    if (!cleanedUrl) {
-      Alert.alert('Erreur', 'URL du fichier invalide');
-      return;
-    }
-
-    setShowPlayer(true);
-  };
+  const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   if (loading) {
     return (
-      <SafeAreaView style={globalStyles.safeArea}>
-        <View style={[globalStyles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={{ marginTop: 16, color: colors.text }}>Chargement...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (error || !course) {
-    return (
-      <SafeAreaView style={globalStyles.safeArea}>
-        <View style={[globalStyles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-          <Ionicons name="alert-circle-outline" size={64} color={colors.placeholder} />
-          <Text style={{ marginTop: 16, color: colors.text, textAlign: 'center' }}>
-            {error || 'Cours non trouvé'}
-          </Text>
-          <TouchableOpacity 
-            style={[globalStyles.button, { marginTop: 20 }]}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={globalStyles.buttonText}>Retour</Text>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
+          <Text style={styles.headerTitle}>Chargement...</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#5B9FED" />
         </View>
       </SafeAreaView>
     );
   }
 
-  const categoryInfo = getCategoryInfo();
-  const cleanedImageUrl = course?.miniatureAccessUrl;
+  if (!cours) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Erreur</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.errorText}>Cours introuvable</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <SafeAreaView style={globalStyles.safeArea}>
-      {/* Header avec actions */}
-      <View style={[globalStyles.header, { justifyContent: 'space-between' }]}>
-        <TouchableOpacity onPress={() => navigation.navigate('ListCours')}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        
-        <Text style={globalStyles.headerTitle} numberOfLines={1}>
-          Détails du cours
-        </Text>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <TouchableOpacity onPress={handleShare} style={{ marginRight: 15 }}>
-            <Ionicons name="share-outline" size={24} color={colors.text} />
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          
-          <TouchableOpacity onPress={handleEdit} style={{ marginRight: 15 }}>
-            <Ionicons name="create-outline" size={24} color={colors.primary} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity onPress={handleDelete}>
-            <Ionicons name="trash-outline" size={24} color="#dc3545" />
-          </TouchableOpacity>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              {cours.livre?.titre || 'Cours'}
+            </Text>
+          </View>
         </View>
-      </View>
 
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-        <View style={globalStyles.formContainer}>
-          {/* Miniature avec gestion d'erreur améliorée */}
-          {cleanedImageUrl && (
-            <View style={{ marginBottom: 20 }}>
-              <SafeImage
-                source={{ uri: cleanedImageUrl }}
-                style={{
-                  width: '100%',
-                  height: 200,
-                  borderRadius: 12,
-                }}
-                fallbackIcon="image-outline"
+        {/* Container Vidéo/Audio */}
+        <View style={styles.mediaContainer}>
+          {cours.type === 'VIDEO' ? (
+            <View style={styles.videoWrapper}>
+              <Video
+                ref={videoRef}
+                source={{ uri: mediaUri }}
+                style={styles.videoPlayer}
+                paused={!isPlaying}
+                resizeMode="contain"
+                onLoad={onLoad}
+                onProgress={onProgress}
+                onError={onError}
+                onEnd={onEnd}
+                controls={false}
+                repeat={false}
+              />
+              {isMediaLoading && (
+                <View style={styles.loadingOverlay}>
+                  <ActivityIndicator size="large" color="#5B9FED" />
+                  <Text style={styles.loadingText}>Chargement...</Text>
+                </View>
+              )}
+              {hasMediaError && (
+                <View style={styles.errorOverlay}>
+                  <Ionicons name="alert-circle" size={60} color="#dc3545" />
+                  <Text style={styles.errorOverlayText}>Erreur de lecture</Text>
+                </View>
+              )}
+            </View>
+          ) : (
+            // Pour AUDIO, afficher une image ou un placeholder
+            <View style={styles.audioContainer}>
+              {cours.miniatureAccessUrl ? (
+                <SafeImage
+                  source={{ uri: cours.miniatureAccessUrl }}
+                  style={styles.audioImage}
+                  fallbackIcon="musical-notes"
+                />
+              ) : (
+                <View style={[styles.audioImage, styles.audioPlaceholder]}>
+                  <Ionicons name="musical-notes" size={80} color="#C4A962" />
+                </View>
+              )}
+              {/* Lecteur audio caché */}
+              <Video
+                ref={videoRef}
+                source={{ uri: mediaUri }}
+                style={{ width: 0, height: 0 }}
+                paused={!isPlaying}
+                onLoad={onLoad}
+                onProgress={onProgress}
+                onError={onError}
+                onEnd={onEnd}
+                controls={false}
+                repeat={false}
               />
             </View>
           )}
+        </View>
 
-          {/* Titre et état */}
-          <View style={{ marginBottom: 20 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-              <Text style={{
-                fontSize: 24,
-                fontWeight: 'bold',
-                color: colors.text,
-                flex: 1,
-                marginRight: 10
-              }}>
-                {course.titre}
-              </Text>
-              {getEtatBadge()}
-            </View>
-            
-            {course.isNew && (
-              <View style={{
-                backgroundColor: '#ffeaa7',
-                paddingHorizontal: 8,
-                paddingVertical: 4,
-                borderRadius: 8,
-                alignSelf: 'flex-start',
-                marginTop: 5
-              }}>
-                <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#d63031' }}>
-                  NOUVEAU
-                </Text>
+        {/* Informations du cours */}
+        <View style={styles.infoContainer}>
+          <Text style={styles.courseTitle}>{cours.titre}</Text>
+          <Text style={styles.courseAuthor}>
+            {cours.livre?.auteur || 'Sheikh Ahmed'}
+          </Text>
+
+          {/* Barre de progression */}
+          <View style={styles.progressContainer}>
+            <Text style={styles.timeText}>
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </Text>
+            <View style={styles.progressBarWrapper}>
+              <View style={styles.progressBarBackground}>
+                <View style={[styles.progressBarFill, { width: `${progressPercentage}%` }]} />
               </View>
-            )}
-          </View>
-
-          {/* Description */}
-          {course.description && (
-            <View style={componentStyles.infoSection}>
-              <Text style={componentStyles.sectionTitle}>Description</Text>
-              <Text style={componentStyles.descriptionText}>{course.description}</Text>
-            </View>
-          )}
-
-          {/* Informations générales */}
-          <View style={componentStyles.infoSection}>
-            <Text style={componentStyles.sectionTitle}>Informations générales</Text>
-            
-            <View style={componentStyles.infoRow}>
-              <Ionicons name="play-circle-outline" size={20} color={colors.primary} />
-              <Text style={componentStyles.infoLabel}>Type :</Text>
-              <Text style={componentStyles.infoValue}>
-                {course.type === 'VIDEO' ? 'Vidéo' : course.type === 'AUDIO' ? 'Audio' : course.type}
-              </Text>
-            </View>
-
-            {categoryInfo && (
-              <View style={componentStyles.infoRow}>
-                <Ionicons name={categoryInfo.icone || "folder-outline"} size={20} color={colors.primary} />
-                <Text style={componentStyles.infoLabel}>Catégorie :</Text>
-                <Text style={componentStyles.infoValue}>{categoryInfo.nom}</Text>
-              </View>
-            )}
-
-            {course.duree && (
-              <View style={componentStyles.infoRow}>
-                <Ionicons name="time-outline" size={20} color={colors.primary} />
-                <Text style={componentStyles.infoLabel}>Durée :</Text>
-                <Text style={componentStyles.infoValue}>{course.duree} min</Text>
-              </View>
-            )}
-
-            <View style={componentStyles.infoRow}>
-              <Ionicons name="calendar-outline" size={20} color={colors.primary} />
-              <Text style={componentStyles.infoLabel}>Créé le :</Text>
-              <Text style={componentStyles.infoValue}>{formatDate(course.datePublication)}</Text>
-            </View>
-
-            {course.updatedAt && course.updatedAt !== course.datePublication && (
-              <View style={componentStyles.infoRow}>
-                <Ionicons name="refresh-outline" size={20} color={colors.primary} />
-                <Text style={componentStyles.infoLabel}>Modifié le :</Text>
-                <Text style={componentStyles.infoValue}>{formatDate(course.updatedAt)}</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Informations du fichier */}
-          <View style={componentStyles.infoSection}>
-            <Text style={componentStyles.sectionTitle}>Fichier</Text>
-            
-            {course.fileName && (
-              <View style={componentStyles.infoRow}>
-                <Ionicons name="document-outline" size={20} color={colors.primary} />
-                <Text style={componentStyles.infoLabel}>Nom :</Text>
-                <Text style={[componentStyles.infoValue, { flex: 1 }]} numberOfLines={2}>
-                  {course.fileName}
-                </Text>
-              </View>
-            )}
-
-            {course.fileSize && (
-              <View style={componentStyles.infoRow}>
-                <Ionicons name="archive-outline" size={20} color={colors.primary} />
-                <Text style={componentStyles.infoLabel}>Taille :</Text>
-                <Text style={componentStyles.infoValue}>{formatFileSize(course.fileSize)}</Text>
-              </View>
-            )}
-
-            {course.fichierAccessUrl && (
-              <TouchableOpacity 
-                style={[globalStyles.button, { marginTop: 15, backgroundColor: colors.secondary, color : colors.primary }]}
-                onPress={handlePlayMedia}
-              >
-                <Ionicons 
-                  name={course.type === 'VIDEO' ? "play" : "musical-notes"} 
-                  size={20} 
-                  color= {colors.primary }
-                  style={{ marginRight: 8 }} 
+              {/* Slider invisible pour permettre de glisser */}
+              <View style={styles.sliderOverlay}>
+                <TouchableOpacity
+                  style={styles.sliderTouchArea}
+                  onPress={(e) => {
+                    const locationX = e.nativeEvent.locationX;
+                    const percentage = (locationX / width) * 100;
+                    handleSeek(percentage);
+                  }}
                 />
-                <Text style={[globalStyles.buttonText, { marginTop: 15,  color : colors.primary }]}>
-                  {course.type === 'VIDEO' ? 'Lire la vidéo' : 'Écouter l\'audio'}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Statistiques */}
-          <View style={componentStyles.infoSection}>
-            <Text style={componentStyles.sectionTitle}>Statistiques</Text>
-            
-            <View style={componentStyles.statsContainer}>
-              <View style={componentStyles.statItem}>
-                <Ionicons name="eye-outline" size={24} color={colors.primary} />
-                <Text style={componentStyles.statNumber}>{course.vues || 0}</Text>
-                <Text style={componentStyles.statLabel}>Vues</Text>
-              </View>
-              
-              <View style={componentStyles.statItem}>
-                <Ionicons name="heart-outline" size={24} color={colors.primary} />
-                <Text style={componentStyles.statNumber}>{course.likes || 0}</Text>
-                <Text style={componentStyles.statLabel}>Likes</Text>
-              </View>
-              
-              <View style={componentStyles.statItem}>
-                <Ionicons name="download-outline" size={24} color={colors.primary} />
-                <Text style={componentStyles.statNumber}>{course.telechargements || 0}</Text>
-                <Text style={componentStyles.statLabel}>Téléchargements</Text>
               </View>
             </View>
           </View>
 
-          {/* Actions supplémentaires */}
-          <View style={{ marginTop: 30, marginBottom: 20 }}>
-            <TouchableOpacity 
-              style={[globalStyles.button, { backgroundColor: colors.primary }]}
-              onPress={handleEdit}
+          {/* Contrôles de lecture */}
+          <View style={styles.controlsContainer}>
+            <TouchableOpacity
+              style={styles.controlButton}
+              onPress={seekBackward}
+              disabled={hasMediaError}
             >
-              <Ionicons name="create-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
-              <Text style={globalStyles.buttonText}>Modifier ce cours</Text>
+              <Text style={styles.controlButtonText}>-15s</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.playButton}
+              onPress={togglePlayPause}
+              disabled={hasMediaError || isMediaLoading}
+            >
+              {isMediaLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.playButtonText}>
+                  {isPlaying ? 'Pause' : 'Play'}
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.controlButton}
+              onPress={seekForward}
+              disabled={hasMediaError}
+            >
+              <Text style={styles.controlButtonText}>+15s</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Bouton de téléchargement */}
+          <TouchableOpacity
+            style={[styles.downloadButton, isDownloaded && styles.downloadButtonDone]}
+            onPress={handleDownload}
+            disabled={isDownloading}
+          >
+            {isDownloading ? (
+              <View style={styles.downloadProgressRow}>
+                <ActivityIndicator size="small" color="#FFFFFF" />
+                <Text style={styles.downloadButtonText}>
+                  {Math.round(downloadProgress * 100)}%
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.downloadProgressRow}>
+                <Ionicons
+                  name={isDownloaded ? 'checkmark-circle' : 'download-outline'}
+                  size={20}
+                  color="#FFFFFF"
+                  style={{ marginRight: 8 }}
+                />
+                <Text style={styles.downloadButtonText}>
+                  {isDownloaded ? 'Téléchargé — Supprimer' : 'Télécharger'}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {isOffline && (
+            <View style={styles.offlineBanner}>
+              <Ionicons name="cloud-offline-outline" size={16} color={colors.textSecondary} />
+              <Text style={styles.offlineBannerText}>Mode hors-ligne</Text>
+            </View>
+          )}
         </View>
+
+        {/* Section Description extensible */}
+        {cours.description && (
+          <View style={styles.descriptionSection}>
+            <TouchableOpacity
+              style={styles.descriptionHeader}
+              onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+            >
+              <Text style={styles.descriptionHeaderText}>Description</Text>
+              <Ionicons
+                name={isDescriptionExpanded ? 'chevron-up' : 'chevron-down'}
+                size={24}
+                color="#FFFFFF"
+              />
+            </TouchableOpacity>
+
+            <Animated.View
+              style={[
+                styles.descriptionContent,
+                {
+                  maxHeight: descriptionHeight.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 1000],
+                  }),
+                  opacity: descriptionHeight,
+                },
+              ]}
+            >
+              <ScrollView style={styles.descriptionScroll} nestedScrollEnabled>
+                <Text style={styles.descriptionText}>{cours.description}</Text>
+              </ScrollView>
+            </Animated.View>
+          </View>
+        )}
+
+        {/* Espace en bas */}
+        <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* Lecteur média */}
-      {showPlayer && course.fichierAccessUrl && (
-        <MediaPlayer
-          uri={course.fichierAccessUrl}
-          type={course.type}
-          title={course.titre}
-          onClose={() => setShowPlayer(false)}
-        />
-      )}
+      {/* Bottom Navigation */}
+      <View style={[styles.bottomNav, { paddingBottom: insets.bottom || spacing.sm }]}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate('Home')}
+        >
+          <Ionicons name="home-outline" size={26} color="#6B7280" />
+          <Text style={styles.navText}>Accueil</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate('Downloads')}
+        >
+          <Ionicons name="download-outline" size={26} color="#6B7280" />
+          <Text style={styles.navText}>Téléchargements</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate('ContinueListening')}
+        >
+          <Ionicons name="headset-outline" size={26} color="#6B7280" />
+          <Text style={styles.navText}>Mes écoutes</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate('Profile')}
+        >
+          <Ionicons name="person-outline" size={26} color="#6B7280" />
+          <Text style={styles.navText}>Profil</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
 
-// Styles spécifiques à cette page
-const componentStyles = {
-  infoSection: {
-    backgroundColor: '#f8f9fa',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.primary,
-    marginBottom: 12,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: colors.primary,
-    marginLeft: 10,
-    minWidth: 80,
-    fontWeight: '500',
-  },
-  infoValue: {
-    fontSize: 14,
-    color: colors.placeholder,
-    marginLeft: 10,
-  },
-  descriptionText: {
-    fontSize: 16,
-    color: colors.primary,
-    lineHeight: 24,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 10,
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.primary,
-    marginTop: 5,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: colors.placeholder,
-    marginTop: 2,
-  },
-};
-
-// Styles pour le lecteur média
 const styles = StyleSheet.create({
-  modalContainer: {
+  safeArea: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#1A202C',
   },
-  playerHeader: {
+  scrollView: {
+    flex: 1,
+  },
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    paddingTop: spacing.md,
   },
-  playerTitle: {
+  backButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  headerTitleContainer: {
     flex: 1,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
     textAlign: 'center',
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
   },
-  playerContent: {
-    flex: 1,
-  },
-  videoContainer: {
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  errorText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+  },
+  mediaContainer: {
+    width: '100%',
     backgroundColor: '#000',
   },
-  audioContainer: {
-    backgroundColor: '#1a1a1a',
+  videoWrapper: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    backgroundColor: '#000',
+    position: 'relative',
   },
-  video: {
+  videoPlayer: {
     width: '100%',
     height: '100%',
   },
-  audio: {
-    width: 0,
-    height: 0,
-  },
-  audioOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+  audioContainer: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    backgroundColor: '#2D3748',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
   },
-  audioTitle: {
-    color: '#fff',
-    fontSize: 18,
-    marginTop: 20,
-    textAlign: 'center',
-    paddingHorizontal: 20,
+  audioImage: {
+    width: '100%',
+    height: '100%',
+  },
+  audioPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5F3EE',
   },
   loadingOverlay: {
     position: 'absolute',
@@ -811,69 +687,180 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.7)',
   },
-  errorText: {
+  errorOverlayText: {
     color: '#fff',
     marginTop: 10,
     fontSize: 16,
   },
-  controls: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+  infoContainer: {
+    padding: spacing.xl,
+    backgroundColor: '#1A202C',
+  },
+  courseTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  courseAuthor: {
+    fontSize: 18,
+    color: '#CBD5E0',
+    marginBottom: spacing.xl,
+    textAlign: 'center',
   },
   progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: spacing.lg,
   },
   timeText: {
-    color: '#fff',
-    fontSize: 12,
-    minWidth: 40,
+    fontSize: 14,
+    color: '#CBD5E0',
+    textAlign: 'right',
+    marginBottom: spacing.sm,
   },
-  progressBar: {
-    flex: 1,
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 2,
-    marginHorizontal: 10,
+  progressBarWrapper: {
     position: 'relative',
   },
-  progressFill: {
+  progressBarBackground: {
+    height: 6,
+    backgroundColor: '#4A5568',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
     height: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: 2,
+    backgroundColor: '#5B9FED',
+    borderRadius: 3,
   },
-  progressThumb: {
+  sliderOverlay: {
     position: 'absolute',
-    top: -6,
-    width: 16,
-    height: 16,
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    marginLeft: -8,
+    top: -10,
+    left: 0,
+    right: 0,
+    height: 26,
   },
-  controlButtons: {
+  sliderTouchArea: {
+    flex: 1,
+  },
+  controlsContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: spacing.lg,
   },
   controlButton: {
-    padding: 15,
-    marginHorizontal: 10,
+    backgroundColor: '#2D3748',
+    paddingVertical: 16,
+    paddingHorizontal: 28,
+    borderRadius: 12,
+    minWidth: 90,
+    alignItems: 'center',
+  },
+  controlButtonText: {
+    color: '#5B9FED',
+    fontSize: 16,
+    fontWeight: '600',
   },
   playButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 50,
-    width: 60,
-    height: 60,
-    justifyContent: 'center',
+    backgroundColor: '#5B9FED',
+    paddingVertical: 16,
+    paddingHorizontal: 48,
+    borderRadius: 12,
+    minWidth: 120,
     alignItems: 'center',
+  },
+  playButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  downloadButton: {
+    backgroundColor: '#2D3748',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  downloadButtonDone: {
+    backgroundColor: '#27AE60',
+  },
+  downloadButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  downloadProgressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  offlineBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: spacing.sm,
+  },
+  offlineBannerText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+  },
+  descriptionSection: {
+    backgroundColor: '#2D3748',
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.lg,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  descriptionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.lg,
+    backgroundColor: '#374151',
+  },
+  descriptionHeaderText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  descriptionContent: {
+    overflow: 'hidden',
+  },
+  descriptionScroll: {
+    maxHeight: 400,
+  },
+  descriptionText: {
+    fontSize: 15,
+    color: '#CBD5E0',
+    lineHeight: 22,
+    padding: spacing.lg,
+  },
+  bottomSpacer: {
+    height: 120,
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    backgroundColor: '#2D3748',
+    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: '#4A5568',
+  },
+  navItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+  navText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  navTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });
 
-export default ViewCourseScreen;
+export default CourseDetailScreen;

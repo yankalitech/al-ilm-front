@@ -15,6 +15,8 @@ import AdminLoginScreen from '../screens/LoginScreen'
 import ReadCourseScreen from '../screens/ReadCourseScreen'
 import SearchCourseScreen from '../screens/SearchCourseScreen'
 import ProfileScreen from '../screens/ProfileScreen'
+import MesTelechargements from '../screens/MesTelechargements'
+import MesEcoutes from '../screens/MesEcoutes'
 
 const Stack = createNativeStackNavigator();
 
@@ -70,11 +72,18 @@ export default function RootNavigator() {
         options={{
           headerShown: false, // Masquer l'en-tête de navigation
         }}/>
-         <Stack.Screen name="ReadCourseScreen" component={ReadCourseScreen} 
+         <Stack.Screen name="ReadCourseScreen" component={ReadCourseScreen}
         options={{
-          headerShown: false, // Masquer l'en-tête de navigation
+          headerShown: false,
         }}/>
-           
+        <Stack.Screen name="Downloads" component={MesTelechargements}
+        options={{
+          headerShown: false,
+        }}/>
+        <Stack.Screen name="ContinueListening" component={MesEcoutes}
+        options={{
+          headerShown: false,
+        }}/>
       </Stack.Navigator>
     </NavigationContainer>
   );

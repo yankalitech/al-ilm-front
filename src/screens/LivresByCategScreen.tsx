@@ -3,16 +3,17 @@ import {
   View,
   Text,
   TouchableOpacity,
-  SafeAreaView,
   FlatList,
   Image,
   StyleSheet,
   ActivityIndicator,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { colors, spacing } from '../styles/globalStyles';
 import { getLivresByCategorie, Livre } from '../api/livresApi';
+import BottomNav from '../components/BottomNav';
 
 const LivresByCategScreen = ({ route, navigation }: any) => {
   const { categoryId, categoryName } = route.params;
@@ -119,9 +120,9 @@ const LivresByCategScreen = ({ route, navigation }: any) => {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="light-content" backgroundColor="#1A202C" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
@@ -144,40 +145,7 @@ const LivresByCategScreen = ({ route, navigation }: any) => {
         ListEmptyComponent={renderEmptyState}
       />
 
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Home')}
-        >
-          <Ionicons name="home-outline" size={26} color="#6B7280" />
-          <Text style={styles.navText}>Home</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Categories')}
-        >
-          <Ionicons name="grid" size={26} color="#FFFFFF" />
-          <Text style={[styles.navText, styles.navTextActive]}>Categories</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Library')}
-        >
-          <Ionicons name="bookmark-outline" size={26} color="#6B7280" />
-          <Text style={styles.navText}>Library</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Profile')}
-        >
-          <Ionicons name="person-outline" size={26} color="#6B7280" />
-          <Text style={styles.navText}>Profile</Text>
-        </TouchableOpacity>
-      </View>
+      <BottomNav />
     </SafeAreaView>
   );
 };
