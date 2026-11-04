@@ -1,5 +1,6 @@
 // src/store/useAuthStore.ts - Version temporaire sans persistance
 import { create } from 'zustand';
+import { API_BASE_URL } from '../api/config';
 
 export interface User {
   id: string;
@@ -40,7 +41,7 @@ const useAuthStore = create<AuthStore>((set, get) => ({
 
     try {
       // Simulation d'un appel API - remplacez par votre vraie URL
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'}/api/auth/login`, {
+      const response = await fetch(`${API_BASE_URL}api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -80,7 +81,7 @@ const useAuthStore = create<AuthStore>((set, get) => ({
       // Optionnel : appel API pour invalider le token côté serveur
       const { token } = get();
       if (token) {
-        await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'}/api/auth/logout`, {
+        await fetch(`${API_BASE_URL}api/auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,

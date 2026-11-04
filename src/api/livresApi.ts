@@ -34,7 +34,7 @@ export interface Cours {
 export const getCoursesByLivre = async (livreId: string, token: string): Promise<Cours[]> => {
   try {
     const options = await getAuthOptions()
-    const response = await fetch(`${API_BASE_URL}/api/livres/${livreId}/courses`, {
+    const response = await fetch(`${API_BASE_URL}api/livres/${livreId}/courses`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -66,7 +66,7 @@ export const getLivresByCategorie = async (categorieId: string): Promise<Livre[]
     // Sinon, elle ne renverra que les livres publiés.
 
     const options = await getAuthOptions()
-    const response = await fetch(`${API_BASE_URL}/api/categories/${categorieId}/livres`, {
+    const response = await fetch(`${API_BASE_URL}api/categories/${categorieId}/livres`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

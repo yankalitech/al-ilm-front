@@ -2,8 +2,9 @@
 import useAuthStore from '../store/useAuthStore';
 import {getStoredToken} from '../utils/storageUtils'
 
-export const API_BASE_URL = 'https://al-ilm-test.dev-ci-cd.com/';
-//export const API_BASE_URL = 'http://10.175.247.222:3000/'
+import {API_BASE_URL} from './config'
+
+export {API_BASE_URL};
 export const options = {
   'Authorization' : `Bearer ${getStoredToken()}`
 }
@@ -28,7 +29,7 @@ export const createAuthenticatedFetch = () => {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_BASE_URL}${url}`, {
+    const response = await fetch(`${API_BASE_URL}${url.replace(/^\//, '')}`, {
       ...options,
       headers,
     });
@@ -76,7 +77,7 @@ export interface DeviceLoginCredentials {
 export const authApi = {
 
   loginWithDeviceId: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-    const response = await fetch(`${API_BASE_URL}/api/auth/token`, {
+    const response = await fetch(`${API_BASE_URL}api/auth/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -93,7 +94,7 @@ export const authApi = {
     return data;
   },
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-    const response = await fetch(`${API_BASE_URL}/api/auth/token`, {
+    const response = await fetch(`${API_BASE_URL}api/auth/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -111,7 +112,7 @@ export const authApi = {
   },
 
   register: async (credentials: RegisterCredentials): Promise<AuthResponse> => {
-    const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+    const response = await fetch(`${API_BASE_URL}api/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -225,7 +225,7 @@ export const searchCourses = async (query: string, token: string): Promise<Cours
     // On encode la requête pour gérer les espaces et caractères spéciaux
     const encodedQuery = encodeURIComponent(query);
     const options = await getAuthOptions()
-    const response = await fetch(`${API_BASE_URL}/api/courses/search?q=${encodedQuery}`, {
+    const response = await fetch(`${API_BASE_URL}api/courses/search?q=${encodedQuery}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -251,7 +251,7 @@ export const getNewCourses = async (): Promise<CoursData[]> => {
   try {
 
     const options = await getAuthOptions()
-    const response = await fetch(`${API_BASE_URL}/api/courses/new`, {
+    const response = await fetch(`${API_BASE_URL}api/courses/new`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
