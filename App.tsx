@@ -6,6 +6,7 @@ import { ActivityIndicator, View, StyleSheet, Text, Platform } from 'react-nativ
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getUniqueId, getDeviceId } from 'react-native-device-info';
 import RootNavigator from './src/navigation/RootNavigator';
+import { ThemeProvider } from './src/theme/ThemeContext';
 import useAuthStore from './src/store/useAuthStore';
 import { authApi } from './src/api/authApi';
 //jjk
@@ -73,7 +74,6 @@ export default function App() {
 
         // Étape 1: Obtenir l'ID unique du dispositif
         const deviceId = await getDeviceUniqueId();
-        console.log('Device ID récupéré:', deviceId);
 
         setInitStatus('Vérification du token existant...');
 
@@ -84,7 +84,6 @@ export default function App() {
           AsyncStorage.getItem(STORAGE_KEYS.AUTO_LOGIN_ENABLED)
         ]);
         // Étape 4: Aucun token valide, tentative de connexion automatique avec Device ID
-        console.log('Tentative de connexion automatique avec Device ID...', deviceId);
         setInitStatus('Connexion automatique avec Device ID...');
         
         try {
@@ -96,7 +95,6 @@ export default function App() {
           // Appel à l'API de connexion avec Device ID
           // Vous devrez adapter votre API pour accepter ce type de connexion
           const response = await authApi.loginWithDeviceId(deviceCredentials);
-          console.log('result connect --------', response)
           // await login(response.user, response.token);
           
           // Sauvegarder les informations de connexion
@@ -106,8 +104,6 @@ export default function App() {
             AsyncStorage.setItem(STORAGE_KEYS.ROLE, JSON.stringify(response?.utilisateur?.role)),
             AsyncStorage.setItem(STORAGE_KEYS.AUTO_LOGIN_ENABLED, 'true')
           ]);
-          
-          console.log('Connexion automatique réussie avec Device ID pour:', AsyncStorage.getItem(STORAGE_KEYS.TOKEN), response.utilisateur);
           setInitStatus('Connecté automatiquement');
           return;
         } catch (loginError) {
@@ -183,7 +179,9 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <RootNavigator />
+      <ThemeProvider>
+        <RootNavigator />
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

@@ -56,7 +56,33 @@ export const getCoursesByLivre = async (livreId: string, token: string): Promise
 };
 
 
-// Remplacez par votre URL de production
+// Tous les livres publiés (accueil et écran « Tous les livres »), du plus récent au plus ancien
+export const getAllLivres = async (): Promise<Livre[]> => {
+  try {
+    const options = await getAuthOptions()
+    const response = await fetch(`${API_BASE_URL}api/livres`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options
+      }
+    });
+
+    if (!response.ok) {
+      console.error('Erreur récupération livres:', response.status);
+      return [];
+    }
+
+    const data: (Livre & { estPublie?: boolean; createdAt?: string })[] = await response.json();
+    // L'API renvoie aussi les livres non publiés : on ne garde que ceux visibles par les utilisateurs
+    return data
+      .filter((livre) => livre.estPublie !== false)
+      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  } catch (error) {
+    console.error('Erreur réseau:', error);
+    return [];
+  }
+};
 
 export const getLivresByCategorie = async (categorieId: string): Promise<Livre[]> => {
   try {

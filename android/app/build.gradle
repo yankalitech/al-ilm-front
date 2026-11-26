@@ -79,11 +79,12 @@ android {
 
     namespace "com.ilmuser.app"
     defaultConfig {
-        applicationId "com.ilmuser.app"
+        // Identifiant Google Play (définitif après la première publication)
+        applicationId "com.alitechiaservice.alilm"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 1 // à augmenter à chaque envoi sur Google Play
+        versionName "1.0.0"
     }
     signingConfigs {
         debug {
@@ -93,11 +94,12 @@ android {
             keyPassword 'android'
         }
         release {
-            if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
-                storeFile file(MYAPP_UPLOAD_STORE_FILE)
-                storePassword MYAPP_UPLOAD_STORE_PASSWORD
-                keyAlias MYAPP_UPLOAD_KEY_ALIAS
-                keyPassword MYAPP_UPLOAD_KEY_PASSWORD
+            // Clé d'envoi Google Play : les mots de passe sont dans ~/.gradle/gradle.properties (hors git)
+            if (project.hasProperty('ALILM_USER_UPLOAD_STORE_FILE')) {
+                storeFile file(ALILM_USER_UPLOAD_STORE_FILE)
+                storePassword ALILM_USER_UPLOAD_STORE_PASSWORD
+                keyAlias ALILM_USER_UPLOAD_KEY_ALIAS
+                keyPassword ALILM_USER_UPLOAD_KEY_PASSWORD
             }
         }
     }

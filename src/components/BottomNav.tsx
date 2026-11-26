@@ -3,7 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { useNavigation, useNavigationState } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, spacing } from '../styles/globalStyles';
+import { spacing } from '../styles/globalStyles';
+import { ThemeColors, useTheme, useThemedStyles } from '../theme/ThemeContext';
 
 const TABS = [
   { route: 'Home', label: 'Accueil', icon: 'home-outline' },
@@ -13,6 +14,8 @@ const TABS = [
 ] as const
 
 export default function BottomNav() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const currentRoute = useNavigationState((state) => state?.routes[state.index]?.name);
@@ -36,7 +39,8 @@ export default function BottomNav() {
   )
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     flexDirection: 'row',
     backgroundColor: colors.surface,

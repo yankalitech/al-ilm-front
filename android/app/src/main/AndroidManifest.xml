@@ -1,6 +1,15 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Permissions ajoutées par des bibliothèques mais inutiles à l'appli (Google Play les signale) :
+         les cours téléchargés sont rangés dans le dossier privé de l'appli, sans accès au stockage partagé ;
+         l'identifiant du téléphone n'a pas besoin de l'état du téléphone ; l'install referrer n'est pas utilisé. -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove" />
+    <uses-permission android:name="com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE" tools:node="remove" />
 
     <application
       android:name=".MainApplication"

@@ -7,7 +7,7 @@ interface DownloadsState {
   error: string | undefined
 
   fetchDownloads: () => Promise<void>
-  addDownload: (courseId: string) => Promise<string | null>
+  addDownload: (courseId: string, qualite?: string) => Promise<string | null>
   removeDownload: (id: string) => Promise<void>
   clearError: () => void
 }
@@ -31,9 +31,9 @@ export const useDownloadsStore = create<DownloadsState>((set, get) => ({
   },
 
   // Returns the signed URL for the file download, or null on error
-  addDownload: async (courseId: string) => {
+  addDownload: async (courseId: string, qualite?: string) => {
     try {
-      const result = await recordDownload(courseId)
+      const result = await recordDownload(courseId, qualite)
       // Refresh the list after recording
       await get().fetchDownloads()
       return result.fichierAccessUrl

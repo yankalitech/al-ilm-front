@@ -11,24 +11,31 @@ import {
   Dimensions,
   RefreshControl
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { useCategoriesStore } from '../store/useCategoriesStore' 
 import {getCategoriesList} from '../api/categoriesApi'
 import { getNewCourses } from '../api/coursesApi';
+import { getAllLivres, Livre } from '../api/livresApi';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) * 0.45;
+const HOME_LIVRES_COUNT = 2; // livres affichés sur l'accueil, le reste via « Voir tous les livres »
+const HOME_PUBLICATIONS_COUNT = 5; // derniers cours affichés sur l'accueil, le reste via « Voir tous les cours »
 
 // Import de vos styles globaux
-import { colors, spacing, typography } from '../styles/globalStyles';
+import { spacing, typography } from '../styles/globalStyles';
+import { ThemeColors, useTheme, useThemedStyles } from '../theme/ThemeContext';
+import ScreenBackground from '../components/ScreenBackground';
 import BottomNav from '../components/BottomNav';
 
 const HomeScreen = () => {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
   const [publications, setPublications] = useState([]);
+  const [livres, setLivres] = useState<Livre[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const {  categories, fetchStats } = useCategoriesStore()
@@ -42,7 +49,8 @@ const HomeScreen = () => {
       // TODO: Remplacer par vos appels API
       await Promise.all([
         loadPublications(),
-        loadCategories()
+        loadCategories(),
+        loadLivres(),
       ]);
     } catch (error) {
       console.error('Erreur de chargement des données:', error);
@@ -87,7 +95,9 @@ const HomeScreen = () => {
     }
   };
 
-  
+  const loadLivres = async () => {
+    setLivres(await getAllLivres());
+  };
 
   const loadCategories = async () => {
     // TODO: Remplacer par votre appel API
@@ -156,7 +166,34 @@ const HomeScreen = () => {
     </TouchableOpacity>
   );
 
-  const renderCategoryItem = ({ item, index }: { item: any; index: number }) => {
+  const renderLivreCard = (livre: Livre) => (
+    <TouchableOpacity
+      key={livre.id}
+      style={styles.livreCard}
+      onPress={() => navigation.navigate('CoursesByLivre', { livreId: livre.id, livreTitre: livre.titre })}
+      activeOpacity={0.8}
+    >
+      {livre.couvertureAccessUrl ? (
+        <Image source={{ uri: livre.couvertureAccessUrl }} style={styles.livreCover} resizeMode="cover" />
+      ) : (
+        <View style={[styles.livreCover, styles.placeholderImage]}>
+          <Ionicons name="book" size={40} color={colors.primary} />
+        </View>
+      )}
+      <View style={styles.livreInfo}>
+        <Text style={styles.livreTitle} numberOfLines={2}>
+          {livre.titre.trim()}
+        </Text>
+        {!!livre.categorie?.nom && (
+          <Text style={styles.livreMeta} numberOfLines={1}>
+            {livre.categorie.nom}
+          </Text>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderCategoryItem =({ item, index }: { item: any; index: number }) => {
     const isLeftColumn = index % 2 === 0;
     return (
       <TouchableOpacity 
@@ -174,7 +211,7 @@ const HomeScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <ScreenBackground edges={['top', 'left', 'right']}>
       <ScrollView
         style={styles.container}
         showsVerticalScrollIndicator={false}
@@ -200,7 +237,7 @@ const HomeScreen = () => {
           <Ionicons name="search-outline" size={20} color={colors.placeholder} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search for courses"
+            placeholder="Rechercher un cours"
             placeholderTextColor={colors.placeholder}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -214,19 +251,56 @@ const HomeScreen = () => {
           <Text style={styles.sectionTitle}>Nouvelles Publications</Text>
           
           {publications.length > 0 ? (
-            <FlatList
-              horizontal
-              data={publications}
-              renderItem={renderPublicationCard}
-              keyExtractor={(item) => item.id}
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.publicationsList}
-            />
+            <>
+              <FlatList
+                horizontal
+                data={publications.slice(0, HOME_PUBLICATIONS_COUNT)}
+                renderItem={renderPublicationCard}
+                keyExtractor={(item) => item.id}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.publicationsList}
+              />
+              <TouchableOpacity
+                style={styles.moreButton}
+                onPress={() => navigation.navigate('AllCourses')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.moreButtonText}>Voir tous les cours</Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.text} />
+              </TouchableOpacity>
+            </>
           ) : (
             <View style={styles.emptyState}>
               <Text style={styles.emptyStateText}>
                 Aucune publication disponible
               </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Livres : les 2 plus récents, puis bouton vers la liste complète */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Livres</Text>
+
+          {livres.length > 0 ? (
+            <>
+              <View style={styles.livresRow}>
+                {livres.slice(0, HOME_LIVRES_COUNT).map(renderLivreCard)}
+                {/* Garde la largeur d'une carte quand il n'y a qu'un livre */}
+                {livres.length < HOME_LIVRES_COUNT && <View style={styles.livreCardSpacer} />}
+              </View>
+              <TouchableOpacity
+                style={styles.moreButton}
+                onPress={() => navigation.navigate('AllLivres')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.moreButtonText}>Voir tous les livres</Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.text} />
+              </TouchableOpacity>
+            </>
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>Aucun livre disponible</Text>
             </View>
           )}
         </View>
@@ -276,11 +350,12 @@ const HomeScreen = () => {
       </ScrollView>
 
       <BottomNav />
-    </SafeAreaView>
+    </ScreenBackground>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
@@ -375,12 +450,63 @@ const styles = StyleSheet.create({
   publicationTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
+    color: '#FFFFFF',
     marginBottom: spacing.xs,
   },
   publicationMeta: {
     fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  livresRow: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.lg,
+    gap: spacing.md,
+  },
+  livreCard: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  livreCardSpacer: {
+    flex: 1,
+  },
+  livreCover: {
+    width: '100%',
+    aspectRatio: 3 / 4,
+  },
+  livreInfo: {
+    padding: spacing.md,
+  },
+  livreTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  livreMeta: {
+    fontSize: 12,
     color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  moreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    paddingVertical: spacing.md,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    gap: spacing.xs,
+  },
+  moreButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
   },
   categoryRow: {
     paddingHorizontal: spacing.lg,

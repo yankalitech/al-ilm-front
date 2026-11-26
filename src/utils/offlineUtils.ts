@@ -91,3 +91,19 @@ export async function downloadFileToDevice(
   await saveLocalFilePath(courseId, localPath)
   return localPath
 }
+
+// Supprime tous les cours téléchargés sur le téléphone (suppression du compte)
+export async function clearAllLocalFiles(): Promise<void> {
+  const map = await readMap()
+  await Promise.all(
+    Object.values(map).map(async (path) => {
+      try {
+        if (await RNFS.exists(path)) await RNFS.unlink(path)
+      } catch (e) {
+        console.warn('Impossible de supprimer le fichier local:', e)
+      }
+    })
+  )
+  memoryCache = {}
+  await AsyncStorage.removeItem(LOCAL_FILES_KEY)
+}

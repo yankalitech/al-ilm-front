@@ -14,11 +14,13 @@ export interface RecordDownloadResponse {
   fichierAccessUrl: string | null
 }
 
-export async function recordDownload(courseId: string): Promise<RecordDownloadResponse> {
+// qualite : pour une vidéo, '720p' | '480p' | '360p' (meilleure qualité si absente)
+export async function recordDownload(courseId: string, qualite?: string): Promise<RecordDownloadResponse> {
   const options = await getAuthOptions()
   const response = await fetch(`${API_BASE_URL}api/courses/${courseId}/download`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options },
+    body: JSON.stringify(qualite ? { qualite } : {}),
   })
   if (!response.ok) {
     const err = await response.json()

@@ -33,8 +33,14 @@ export interface Cours {
   datePublication: string;
   miniatureAccessUrl: string | null; // L'URL signée (ou celle du livre en fallback)
   fichierAccessUrl: string | null; // L'URL signée (ou celle du livre en fallback)
+  qualites?: VideoQualite[]; // Vidéo : URL signée par qualité, de la meilleure à la plus légère
   livreId: string;
   livre?: Livre; // L'API inclut les infos du livre
+}
+
+export interface VideoQualite {
+  label: '720p' | '480p' | '360p';
+  url: string;
 }
 
 

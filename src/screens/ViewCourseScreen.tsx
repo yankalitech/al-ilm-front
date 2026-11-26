@@ -11,10 +11,11 @@ import {
   Alert,
   Dimensions,
 } from 'react-native';
-import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
-import Video from 'react-native-video';
+import type { VideoRef } from 'react-native-video';
+import MediaPlayer from '../components/MediaPlayer';
 import NetInfo from '@react-native-community/netinfo';
 import { getCoursElement, Cours } from '../api/coursesApi';
 import { useHistoryStore } from '../store/useHistoryStore';
@@ -25,7 +26,12 @@ import {
   downloadFileToDevice,
   removeLocalFilePath,
 } from '../utils/offlineUtils';
-import { colors, spacing } from '../styles/globalStyles';
+import { spacing } from '../styles/globalStyles';
+import { ThemeColors, useTheme, useThemedStyles } from '../theme/ThemeContext';
+import ScreenBackground from '../components/ScreenBackground';
+import BottomNav from '../components/BottomNav';
+import QualityPickerModal from '../components/QualityPickerModal';
+import { QualityLabel, getPreferredQuality, pickQuality, setPreferredQuality } from '../utils/videoQuality';
 
 const { width } = Dimensions.get('window');
 
@@ -88,6 +94,8 @@ const SafeImage = ({ source, style, fallbackIcon = "image-outline" }) => {
 };
 
 const CourseDetailScreen: React.FC = () => {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
@@ -101,11 +109,10 @@ const CourseDetailScreen: React.FC = () => {
   const [cours, setCours] = useState<Cours | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
-  const [isMediaLoading, setIsMediaLoading] = useState(false);
-  const [hasMediaError, setHasMediaError] = useState(false);
+  // Après un changement de qualité, la lecture reprend si elle était en cours
+  const [autoPlayNext, setAutoPlayNext] = useState(false);
 
   // Download state
   const [isDownloading, setIsDownloading] = useState(false);
@@ -116,7 +123,12 @@ const CourseDetailScreen: React.FC = () => {
   const [mediaUri, setMediaUri] = useState<string>('');
   const [isOffline, setIsOffline] = useState(false);
 
-  const videoRef = useRef<Video>(null);
+  // Qualité vidéo (lecture en ligne) et sélecteur ouvert pour la lecture ou le téléchargement
+  const [quality, setQuality] = useState<QualityLabel | null>(null);
+  const [qualityPicker, setQualityPicker] = useState<'play' | 'download' | null>(null);
+  const pendingSeekRef = useRef<number | null>(null);
+
+  const videoRef = useRef<VideoRef>(null);
   const descriptionHeight = useRef(new Animated.Value(0)).current;
   const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentTimeRef = useRef(0);
@@ -176,7 +188,10 @@ const CourseDetailScreen: React.FC = () => {
         setCours(data);
         setDuration(data.duree);
         if (!localPath) {
-          setMediaUri(data.fichierAccessUrl || '');
+          // Vidéo : qualité préférée de l'utilisateur, sinon la meilleure disponible
+          const selected = pickQuality(data.qualites, await getPreferredQuality());
+          setQuality(selected?.label ?? null);
+          setMediaUri(selected?.url || data.fichierAccessUrl || '');
         }
       } else if (!localPath) {
         Alert.alert('Hors-ligne', 'Ce cours n\'est pas disponible hors-ligne.');
@@ -188,7 +203,6 @@ const CourseDetailScreen: React.FC = () => {
       if (resumeAt && resumeAt > 0) {
         setTimeout(() => {
           if (videoRef.current) videoRef.current.seek(resumeAt);
-          setCurrentTime(resumeAt);
           currentTimeRef.current = resumeAt;
         }, 800);
       }
@@ -200,55 +214,32 @@ const CourseDetailScreen: React.FC = () => {
     }
   };
 
-  const togglePlayPause = () => {
-    setIsPlaying(!isPlaying);
-  };
-
-  const seekBackward = () => {
-    const newPosition = Math.max(0, currentTime - 15);
-    if (videoRef.current) {
-      videoRef.current.seek(newPosition);
-    }
-    setCurrentTime(newPosition);
-  };
-
-  const seekForward = () => {
-    const newPosition = Math.min(duration, currentTime + 15);
-    if (videoRef.current) {
-      videoRef.current.seek(newPosition);
-    }
-    setCurrentTime(newPosition);
-  };
-
-  const handleSeek = (value: number) => {
-    if (videoRef.current && duration > 0) {
-      const seekTime = (value / 100) * duration;
-      videoRef.current.seek(seekTime);
-      setCurrentTime(seekTime);
-    }
-  };
-
   const onLoad = (data: any) => {
     setDuration(data.duration);
-    setIsMediaLoading(false);
-    setHasMediaError(false);
+    // Après un changement de qualité : reprise au même endroit
+    if (pendingSeekRef.current !== null) {
+      videoRef.current?.seek(pendingSeekRef.current);
+      pendingSeekRef.current = null;
+    }
+  };
+
+  const changeQuality = (label: QualityLabel) => {
+    setQualityPicker(null);
+    const selected = cours?.qualites?.find((q) => q.label === label);
+    if (!selected || label === quality) return;
+    pendingSeekRef.current = currentTimeRef.current;
+    setAutoPlayNext(isPlaying);
+    setQuality(label);
+    setMediaUri(selected.url);
+    setPreferredQuality(label);
   };
 
   const onProgress = (data: any) => {
-    setCurrentTime(data.currentTime);
     currentTimeRef.current = data.currentTime;
-  };
-
-  const onError = (error: any) => {
-    console.error('Erreur de lecture:', error);
-    setHasMediaError(true);
-    setIsMediaLoading(false);
-    Alert.alert('Erreur', 'Impossible de lire ce fichier média');
   };
 
   const onEnd = () => {
     setIsPlaying(false);
-    setCurrentTime(0);
     currentTimeRef.current = 0;
     if (videoRef.current) {
       videoRef.current.seek(0);
@@ -278,17 +269,29 @@ const CourseDetailScreen: React.FC = () => {
     }
 
     if (!cours) return;
+
+    // Vidéo disponible en plusieurs qualités : l'utilisateur choisit (taille estimée affichée)
+    if ((cours.qualites?.length ?? 0) > 1) {
+      setQualityPicker('download');
+      return;
+    }
+    startDownload();
+  };
+
+  const startDownload = async (qualite?: QualityLabel) => {
+    setQualityPicker(null);
+    if (!cours) return;
     setIsDownloading(true);
     setDownloadProgress(0);
 
     try {
       // Record download server-side and get signed URL
-      const signedUrl = await addDownload(courseId);
+      const signedUrl = await addDownload(courseId, qualite);
       if (!signedUrl) throw new Error('URL de téléchargement non disponible');
 
       // Determine file extension from URL or type
       const ext = cours.type === 'AUDIO' ? 'mp3' : 'mp4';
-      const fileName = `${cours.titre.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${ext}`;
+      const fileName = `${cours.titre.replace(/[^a-z0-9]/gi, '_').toLowerCase()}${qualite ? `_${qualite}` : ''}.${ext}`;
 
       await downloadFileToDevice(courseId, signedUrl, fileName, (p) => {
         setDownloadProgress(p);
@@ -305,53 +308,45 @@ const CourseDetailScreen: React.FC = () => {
     }
   };
 
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
-
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <ScreenBackground>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Chargement...</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#5B9FED" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      </SafeAreaView>
+      </ScreenBackground>
     );
   }
 
   if (!cours) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <ScreenBackground>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Erreur</Text>
         </View>
         <View style={styles.loadingContainer}>
           <Text style={styles.errorText}>Cours introuvable</Text>
         </View>
-      </SafeAreaView>
+      </ScreenBackground>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <ScreenBackground edges={['top', 'left', 'right']}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.headerTitleContainer}>
             <Text style={styles.headerTitle} numberOfLines={1}>
@@ -360,65 +355,29 @@ const CourseDetailScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Container Vidéo/Audio */}
+        {/* Lecteur (le même que dans l'appli admin) : contrôles natifs, plein écran, -15 s / +15 s */}
         <View style={styles.mediaContainer}>
-          {cours.type === 'VIDEO' ? (
-            <View style={styles.videoWrapper}>
-              <Video
-                ref={videoRef}
-                source={{ uri: mediaUri }}
-                style={styles.videoPlayer}
-                paused={!isPlaying}
-                resizeMode="contain"
-                onLoad={onLoad}
-                onProgress={onProgress}
-                onError={onError}
-                onEnd={onEnd}
-                controls={false}
-                repeat={false}
-              />
-              {isMediaLoading && (
-                <View style={styles.loadingOverlay}>
-                  <ActivityIndicator size="large" color="#5B9FED" />
-                  <Text style={styles.loadingText}>Chargement...</Text>
-                </View>
-              )}
-              {hasMediaError && (
-                <View style={styles.errorOverlay}>
-                  <Ionicons name="alert-circle" size={60} color="#dc3545" />
-                  <Text style={styles.errorOverlayText}>Erreur de lecture</Text>
-                </View>
-              )}
-            </View>
-          ) : (
-            // Pour AUDIO, afficher une image ou un placeholder
-            <View style={styles.audioContainer}>
-              {cours.miniatureAccessUrl ? (
-                <SafeImage
-                  source={{ uri: cours.miniatureAccessUrl }}
-                  style={styles.audioImage}
-                  fallbackIcon="musical-notes"
-                />
-              ) : (
-                <View style={[styles.audioImage, styles.audioPlaceholder]}>
-                  <Ionicons name="musical-notes" size={80} color="#C4A962" />
-                </View>
-              )}
-              {/* Lecteur audio caché */}
-              <Video
-                ref={videoRef}
-                source={{ uri: mediaUri }}
-                style={{ width: 0, height: 0 }}
-                paused={!isPlaying}
-                onLoad={onLoad}
-                onProgress={onProgress}
-                onError={onError}
-                onEnd={onEnd}
-                controls={false}
-                repeat={false}
-              />
-            </View>
-          )}
+          <MediaPlayer
+            ref={videoRef}
+            uri={mediaUri}
+            type={cours.type}
+            title={cours.type === 'AUDIO' ? cours.titre : undefined}
+            artworkUri={cours.miniatureAccessUrl}
+            autoPlay={autoPlayNext}
+            style={cours.type === 'VIDEO' ? styles.videoWrapper : styles.audioPlayer}
+            onLoad={onLoad}
+            onProgress={onProgress}
+            onEnd={onEnd}
+            onPlayingChange={setIsPlaying}
+          >
+            {/* Choix de la qualité (vidéo en ligne uniquement) */}
+            {!isDownloaded && quality && (cours.qualites?.length ?? 0) > 1 && (
+              <TouchableOpacity style={styles.qualityBadge} onPress={() => setQualityPicker('play')}>
+                <Ionicons name="settings-outline" size={14} color="#FFFFFF" />
+                <Text style={styles.qualityBadgeText}>{quality}</Text>
+              </TouchableOpacity>
+            )}
+          </MediaPlayer>
         </View>
 
         {/* Informations du cours */}
@@ -427,62 +386,6 @@ const CourseDetailScreen: React.FC = () => {
           <Text style={styles.courseAuthor}>
             {cours.livre?.auteur || 'Sheikh Ahmed'}
           </Text>
-
-          {/* Barre de progression */}
-          <View style={styles.progressContainer}>
-            <Text style={styles.timeText}>
-              {formatTime(currentTime)} / {formatTime(duration)}
-            </Text>
-            <View style={styles.progressBarWrapper}>
-              <View style={styles.progressBarBackground}>
-                <View style={[styles.progressBarFill, { width: `${progressPercentage}%` }]} />
-              </View>
-              {/* Slider invisible pour permettre de glisser */}
-              <View style={styles.sliderOverlay}>
-                <TouchableOpacity
-                  style={styles.sliderTouchArea}
-                  onPress={(e) => {
-                    const locationX = e.nativeEvent.locationX;
-                    const percentage = (locationX / width) * 100;
-                    handleSeek(percentage);
-                  }}
-                />
-              </View>
-            </View>
-          </View>
-
-          {/* Contrôles de lecture */}
-          <View style={styles.controlsContainer}>
-            <TouchableOpacity
-              style={styles.controlButton}
-              onPress={seekBackward}
-              disabled={hasMediaError}
-            >
-              <Text style={styles.controlButtonText}>-15s</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.playButton}
-              onPress={togglePlayPause}
-              disabled={hasMediaError || isMediaLoading}
-            >
-              {isMediaLoading ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text style={styles.playButtonText}>
-                  {isPlaying ? 'Pause' : 'Play'}
-                </Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.controlButton}
-              onPress={seekForward}
-              disabled={hasMediaError}
-            >
-              <Text style={styles.controlButtonText}>+15s</Text>
-            </TouchableOpacity>
-          </View>
 
           {/* Bouton de téléchargement */}
           <TouchableOpacity
@@ -531,7 +434,7 @@ const CourseDetailScreen: React.FC = () => {
               <Ionicons
                 name={isDescriptionExpanded ? 'chevron-up' : 'chevron-down'}
                 size={24}
-                color="#FFFFFF"
+                color={colors.text}
               />
             </TouchableOpacity>
 
@@ -558,48 +461,26 @@ const CourseDetailScreen: React.FC = () => {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* Bottom Navigation */}
-      <View style={[styles.bottomNav, { paddingBottom: insets.bottom || spacing.sm }]}>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Home')}
-        >
-          <Ionicons name="home-outline" size={26} color="#6B7280" />
-          <Text style={styles.navText}>Accueil</Text>
-        </TouchableOpacity>
+      <QualityPickerModal
+        visible={qualityPicker !== null}
+        title={qualityPicker === 'download' ? 'Qualité du téléchargement' : 'Qualité de lecture'}
+        qualites={cours.qualites ?? []}
+        selected={qualityPicker === 'play' ? quality : null}
+        durationSec={qualityPicker === 'download' ? cours.duree : undefined}
+        onSelect={(label) => (qualityPicker === 'download' ? startDownload(label) : changeQuality(label))}
+        onClose={() => setQualityPicker(null)}
+      />
 
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Downloads')}
-        >
-          <Ionicons name="download-outline" size={26} color="#6B7280" />
-          <Text style={styles.navText}>Téléchargements</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate('ContinueListening')}
-        >
-          <Ionicons name="headset-outline" size={26} color="#6B7280" />
-          <Text style={styles.navText}>Mes écoutes</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Profile')}
-        >
-          <Ionicons name="person-outline" size={26} color="#6B7280" />
-          <Text style={styles.navText}>Profil</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+      <BottomNav />
+    </ScreenBackground>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#1A202C',
+    backgroundColor: 'transparent',
   },
   scrollView: {
     flex: 1,
@@ -621,7 +502,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.text,
     textAlign: 'center',
   },
   loadingContainer: {
@@ -630,7 +511,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   errorText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 16,
   },
   mediaContainer: {
@@ -647,10 +528,30 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  audioPlayer: {
+    width: '100%',
+  },
+  qualityBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+  },
+  qualityBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
   audioContainer: {
     width: '100%',
     aspectRatio: 16 / 9,
-    backgroundColor: '#2D3748',
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -694,18 +595,18 @@ const styles = StyleSheet.create({
   },
   infoContainer: {
     padding: spacing.xl,
-    backgroundColor: '#1A202C',
+    backgroundColor: 'transparent',
   },
   courseTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.text,
     marginBottom: spacing.sm,
     textAlign: 'center',
   },
   courseAuthor: {
     fontSize: 18,
-    color: '#CBD5E0',
+    color: colors.textSecondary,
     marginBottom: spacing.xl,
     textAlign: 'center',
   },
@@ -714,7 +615,7 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: 14,
-    color: '#CBD5E0',
+    color: colors.textSecondary,
     textAlign: 'right',
     marginBottom: spacing.sm,
   },
@@ -723,13 +624,13 @@ const styles = StyleSheet.create({
   },
   progressBarBackground: {
     height: 6,
-    backgroundColor: '#4A5568',
+    backgroundColor: colors.border,
     borderRadius: 3,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#5B9FED',
+    backgroundColor: colors.primary,
     borderRadius: 3,
   },
   sliderOverlay: {
@@ -749,7 +650,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   controlButton: {
-    backgroundColor: '#2D3748',
+    backgroundColor: colors.surface,
     paddingVertical: 16,
     paddingHorizontal: 28,
     borderRadius: 12,
@@ -757,12 +658,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   controlButtonText: {
-    color: '#5B9FED',
+    color: colors.primary,
     fontSize: 16,
     fontWeight: '600',
   },
   playButton: {
-    backgroundColor: '#5B9FED',
+    backgroundColor: colors.primary,
     paddingVertical: 16,
     paddingHorizontal: 48,
     borderRadius: 12,
@@ -775,14 +676,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   downloadButton: {
-    backgroundColor: '#2D3748',
+    backgroundColor: colors.primary,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
     marginBottom: spacing.sm,
   },
   downloadButtonDone: {
-    backgroundColor: '#27AE60',
+    backgroundColor: colors.success,
   },
   downloadButtonText: {
     color: '#FFFFFF',
@@ -805,7 +706,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   descriptionSection: {
-    backgroundColor: '#2D3748',
+    backgroundColor: colors.surface,
     marginHorizontal: spacing.lg,
     marginTop: spacing.lg,
     borderRadius: 12,
@@ -816,12 +717,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: spacing.lg,
-    backgroundColor: '#374151',
+    backgroundColor: colors.surfaceAlt,
   },
   descriptionHeaderText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.text,
   },
   descriptionContent: {
     overflow: 'hidden',
@@ -831,7 +732,7 @@ const styles = StyleSheet.create({
   },
   descriptionText: {
     fontSize: 15,
-    color: '#CBD5E0',
+    color: colors.textSecondary,
     lineHeight: 22,
     padding: spacing.lg,
   },
@@ -840,11 +741,11 @@ const styles = StyleSheet.create({
   },
   bottomNav: {
     flexDirection: 'row',
-    backgroundColor: '#2D3748',
+    backgroundColor: colors.surface,
     paddingTop: spacing.sm,
     paddingHorizontal: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: '#4A5568',
+    borderTopColor: colors.border,
   },
   navItem: {
     flex: 1,
@@ -853,12 +754,12 @@ const styles = StyleSheet.create({
   },
   navText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginTop: 4,
     fontWeight: '500',
   },
   navTextActive: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontWeight: '600',
   },
 });

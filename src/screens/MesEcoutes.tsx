@@ -9,11 +9,12 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@react-native-vector-icons/ionicons'
 import { useNavigation } from '@react-navigation/native'
 import { useHistoryStore } from '../store/useHistoryStore'
-import { colors, spacing } from '../styles/globalStyles'
+import { spacing } from '../styles/globalStyles';
+import { ThemeColors, useTheme, useThemedStyles } from '../theme/ThemeContext';
+import ScreenBackground from '../components/ScreenBackground';
 import BottomNav from '../components/BottomNav'
 
 const formatDuration = (seconds: number) => {
@@ -29,6 +30,8 @@ const formatDate = (isoString: string) => {
 }
 
 export default function MesEcoutes() {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const navigation = useNavigation()
   const { history, isLoading, error, fetchHistory, clearError } = useHistoryStore()
 
@@ -92,7 +95,7 @@ export default function MesEcoutes() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <ScreenBackground edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -137,11 +140,12 @@ export default function MesEcoutes() {
         />
       )}
       <BottomNav />
-    </SafeAreaView>
+    </ScreenBackground>
   )
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,

@@ -1,28 +1,39 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { StatusBar } from 'react-native';
+import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
+import { useTheme } from '../theme/ThemeContext';
+import SettingsScreen from '../screens/SettingsScreen';
+import AccountDeletedScreen from '../screens/AccountDeletedScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HomeScreen from '../screens/HomeScreen';
-import AddCourseScreen from '../screens/AddCourseScreen';
-import AddCategoriesScreen from '../screens/AddCategoriesScreen';
-import ListCategoriesScreen from '../screens/ListCategoriesScreen';
-import EditCategoryScreen from '../screens/EditCategoryScreen';
 
 import LivresByCategScreen from '../screens/LivresByCategScreen';
-import CoursesByLivreScreen from '../screens/CoursesByLivreScreen';
 import ViewCourseScreen from '../screens/ViewCourseScreen'
-import EditCourseScreen from '../screens/EditCourseScreen'
-import AdminLoginScreen from '../screens/LoginScreen'
-import ReadCourseScreen from '../screens/ReadCourseScreen'
 import SearchCourseScreen from '../screens/SearchCourseScreen'
 import ProfileScreen from '../screens/ProfileScreen'
 import MesTelechargements from '../screens/MesTelechargements'
 import MesEcoutes from '../screens/MesEcoutes'
+import AllCoursesScreen from '../screens/AllCoursesScreen'
 
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
+  const { colors, isDark } = useTheme();
+  // Couleurs de la navigation alignées sur le thème (évite un flash blanc entre deux écrans)
+  const navTheme = {
+    ...(isDark ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(isDark ? DarkTheme : DefaultTheme).colors,
+      background: colors.background,
+      card: colors.surface,
+      text: colors.text,
+      border: colors.border,
+      primary: colors.primary,
+    },
+  };
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navTheme}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
       <Stack.Navigator>
         {/* <Stack.Screen name="AdminLogin" component={AdminLoginScreen} 
         options={{
@@ -31,32 +42,33 @@ export default function RootNavigator() {
         <Stack.Screen name="Home" component={HomeScreen} 
         options={{
           headerShown: false, // Masquer l'en-tête de navigation
-        }}/>
-        <Stack.Screen name="AddCategories" component={AddCategoriesScreen} 
-        options={{
-          headerShown: false, // Masquer l'en-tête de navigation
-        }}/>
-        <Stack.Screen name="AddCourse" component={AddCourseScreen} 
-        options={{
-          headerShown: false, // Masquer l'en-tête de navigation
-        }}/>
-        <Stack.Screen name="ListCategories" component={ListCategoriesScreen} 
-        options={{
-          headerShown: false, // Masquer l'en-tête de navigation
         }}/> 
-        <Stack.Screen name="EditCategory" component={EditCategoryScreen} 
-        options={{
-          headerShown: false, // Masquer l'en-tête de navigation
-        }}/>
         <Stack.Screen name="CategoryCourses" component={LivresByCategScreen} 
         options={{
           headerShown: false, // Masquer l'en-tête de navigation
         }}/>
-         <Stack.Screen name="Search" component={SearchCourseScreen} 
+        <Stack.Screen name="AccountDeleted" component={AccountDeletedScreen}
+        options={{
+          headerShown: false,
+          gestureEnabled: false,
+        }}/>
+        <Stack.Screen name="Settings" component={SettingsScreen}
+        options={{
+          headerShown: false,
+        }}/>
+        <Stack.Screen name="AllCourses" component={AllCoursesScreen}
+        options={{
+          headerShown: false,
+        }}/>
+        <Stack.Screen name="AllLivres" component={LivresByCategScreen}
+        options={{
+          headerShown: false,
+        }}/>
+         <Stack.Screen name="Search" component={SearchCourseScreen}
         options={{
           headerShown: false, // Masquer l'en-tête de navigation
         }}/>
-        <Stack.Screen name="CoursesByLivre" component={CoursesByLivreScreen} 
+        <Stack.Screen name="CoursesByLivre" component={AllCoursesScreen} 
         options={{
           headerShown: false, // Masquer l'en-tête de navigation
         }}/>
@@ -64,17 +76,9 @@ export default function RootNavigator() {
         options={{
           headerShown: false, // Masquer l'en-tête de navigation
         }}/>
-          <Stack.Screen name="EditCourse" component={EditCourseScreen} 
-        options={{
-          headerShown: false, // Masquer l'en-tête de navigation
-        }}/>
          <Stack.Screen name="Profile" component={ProfileScreen} 
         options={{
           headerShown: false, // Masquer l'en-tête de navigation
-        }}/>
-         <Stack.Screen name="ReadCourseScreen" component={ReadCourseScreen}
-        options={{
-          headerShown: false,
         }}/>
         <Stack.Screen name="Downloads" component={MesTelechargements}
         options={{
