@@ -3,19 +3,23 @@ import {
   View,
   Text,
   TouchableOpacity,
-  SafeAreaView,
   FlatList,
   Image,
   StyleSheet,
   ActivityIndicator,
-  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
-import { colors, spacing } from '../styles/globalStyles';
-import { getLivresByCategorie, Livre } from '../api/livresApi';
+import { spacing } from '../styles/globalStyles';
+import { ThemeColors, useTheme, useThemedStyles } from '../theme/ThemeContext';
+import ScreenBackground from '../components/ScreenBackground';
+import { getAllLivres, getLivresByCategorie, Livre } from '../api/livresApi';
+import BottomNav from '../components/BottomNav';
 
+// Sans catégorie (bouton « Voir tous les livres » de l'accueil) : affiche tous les livres
 const LivresByCategScreen = ({ route, navigation }: any) => {
-  const { categoryId, categoryName } = route.params;
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
+  const { categoryId, categoryName = 'Tous les livres' } = route.params || {};
   const [livres, setLivres] = useState<Livre[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,7 +29,7 @@ const LivresByCategScreen = ({ route, navigation }: any) => {
 
   const loadLivres = async () => {
     try {
-      const data = await getLivresByCategorie(categoryId);
+      const data = categoryId ? await getLivresByCategorie(categoryId) : await getAllLivres();
       setLivres(data);
     } catch (error) {
       console.error('Erreur de chargement des livres:', error);
@@ -89,7 +93,7 @@ const LivresByCategScreen = ({ route, navigation }: any) => {
               />
             ) : (
               <View style={[styles.livreImage, styles.placeholderImage]}>
-                <Ionicons name="book" size={40} color="#C8A882" />
+                <Ionicons name="book" size={40} color={colors.primary} />
               </View>
             )}
           </View>
@@ -100,32 +104,30 @@ const LivresByCategScreen = ({ route, navigation }: any) => {
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Ionicons name="folder-open-outline" size={64} color="#6B7280" />
+      <Ionicons name="folder-open-outline" size={64} color={colors.placeholder} />
       <Text style={styles.emptyStateText}>
-        Aucun livre disponible dans cette catégorie
+        {categoryId ? 'Aucun livre disponible dans cette catégorie' : 'Aucun livre disponible'}
       </Text>
     </View>
   );
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="#1A202C" />
+      <ScreenBackground>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#C8A882" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      </SafeAreaView>
+      </ScreenBackground>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#1A202C" />
-      
+    <ScreenBackground edges={['top', 'left', 'right']}>
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle} numberOfLines={2}>
@@ -144,48 +146,16 @@ const LivresByCategScreen = ({ route, navigation }: any) => {
         ListEmptyComponent={renderEmptyState}
       />
 
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Home')}
-        >
-          <Ionicons name="home-outline" size={26} color="#6B7280" />
-          <Text style={styles.navText}>Home</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Categories')}
-        >
-          <Ionicons name="grid" size={26} color="#FFFFFF" />
-          <Text style={[styles.navText, styles.navTextActive]}>Categories</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Library')}
-        >
-          <Ionicons name="bookmark-outline" size={26} color="#6B7280" />
-          <Text style={styles.navText}>Library</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => navigation.navigate('Profile')}
-        >
-          <Ionicons name="person-outline" size={26} color="#6B7280" />
-          <Text style={styles.navText}>Profile</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+      <BottomNav />
+    </ScreenBackground>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#1A202C', // Fond sombre comme dans l'image
+    backgroundColor: 'transparent',
   },
   loadingContainer: {
     flex: 1,
@@ -209,7 +179,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.text,
     textAlign: 'center',
   },
   listContainer: {
@@ -217,7 +187,9 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
   livreCard: {
-    backgroundColor: '#2D3748', // Fond des cartes
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: 16,
     marginBottom: spacing.lg,
     overflow: 'hidden',
@@ -234,30 +206,30 @@ const styles = StyleSheet.create({
   },
   statusBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#4A5568',
+    backgroundColor: colors.surfaceAlt,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: 6,
     marginBottom: spacing.sm,
   },
   statusBadgeProgress: {
-    backgroundColor: '#4A5568',
+    backgroundColor: colors.surfaceAlt,
   },
   statusText: {
     fontSize: 12,
-    color: '#A0AEC0',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   livreTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.text,
     lineHeight: 26,
     marginBottom: spacing.xs,
   },
   livreDuration: {
     fontSize: 14,
-    color: '#A0AEC0',
+    color: colors.textSecondary,
     marginTop: spacing.xs,
   },
   livreImageContainer: {
@@ -270,7 +242,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   placeholderImage: {
-    backgroundColor: '#4A5568',
+    backgroundColor: colors.surfaceAlt,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -282,17 +254,17 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 16,
-    color: '#A0AEC0',
+    color: colors.textSecondary,
     marginTop: spacing.md,
     textAlign: 'center',
   },
   bottomNav: {
     flexDirection: 'row',
-    backgroundColor: '#2D3748',
+    backgroundColor: colors.surface,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: '#4A5568',
+    borderTopColor: colors.border,
   },
   navItem: {
     flex: 1,
@@ -301,12 +273,12 @@ const styles = StyleSheet.create({
   },
   navText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginTop: 4,
     fontWeight: '500',
   },
   navTextActive: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontWeight: '600',
   },
 });

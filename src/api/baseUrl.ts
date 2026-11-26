@@ -1,7 +1,9 @@
 // src/api/baseUrl.ts - Version mise à jour avec authentification
 import useAuthStore from '../store/useAuthStore';
 
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+import { API_BASE_URL } from './config';
+
+export { API_BASE_URL };
 
 // Interface pour les options de requête
 interface ApiRequestOptions extends RequestInit {
@@ -33,7 +35,7 @@ export const createApiRequest = async (
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(`${API_BASE_URL}${endpoint.replace(/^\//, '')}`, {
       ...requestOptions,
       headers,
     });

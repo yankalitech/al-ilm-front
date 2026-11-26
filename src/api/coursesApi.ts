@@ -1,4 +1,5 @@
 import {API_BASE_URL, getAuthOptions} from "./authApi"
+import {Livre} from "./livresApi"
 
 // Interface pour les données de cours
 export interface CoursData {
@@ -22,6 +23,25 @@ export interface CoursUpdateData {
   miniature?: File
 }
 
+export interface Cours {
+  id: string;
+  titre: string;
+  description: string | null;
+  type: 'AUDIO' | 'VIDEO';
+  duree: number; // en secondes
+  etat: 'NOUVEAU' | 'EN_COURS' | 'PUBLIE';
+  datePublication: string;
+  miniatureAccessUrl: string | null; // L'URL signée (ou celle du livre en fallback)
+  fichierAccessUrl: string | null; // L'URL signée (ou celle du livre en fallback)
+  qualites?: VideoQualite[]; // Vidéo : URL signée par qualité, de la meilleure à la plus légère
+  livreId: string;
+  livre?: Livre; // L'API inclut les infos du livre
+}
+
+export interface VideoQualite {
+  label: '720p' | '480p' | '360p';
+  url: string;
+}
 
 
 // Récupérer la liste de tous les cours
@@ -211,7 +231,7 @@ export const searchCourses = async (query: string, token: string): Promise<Cours
     // On encode la requête pour gérer les espaces et caractères spéciaux
     const encodedQuery = encodeURIComponent(query);
     const options = await getAuthOptions()
-    const response = await fetch(`${API_BASE_URL}/api/courses/search?q=${encodedQuery}`, {
+    const response = await fetch(`${API_BASE_URL}api/courses/search?q=${encodedQuery}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -237,7 +257,7 @@ export const getNewCourses = async (): Promise<CoursData[]> => {
   try {
 
     const options = await getAuthOptions()
-    const response = await fetch(`${API_BASE_URL}/api/courses/new`, {
+    const response = await fetch(`${API_BASE_URL}api/courses/new`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

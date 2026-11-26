@@ -5,7 +5,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   FlatList,
   Image,
   StyleSheet,
@@ -15,11 +14,16 @@ import {
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { searchCourses } from '../api/coursesApi';
-import { colors, spacing } from '../styles/globalStyles';
+import { spacing } from '../styles/globalStyles';
+import { ThemeColors, useTheme, useThemedStyles } from '../theme/ThemeContext';
+import ScreenBackground from '../components/ScreenBackground';
+import BottomNav from '../components/BottomNav';
 
 type SearchScreenRouteProp = RouteProp<{ Search: { query: string } }, 'Search'>;
 
 const SearchScreen = () => {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const navigation = useNavigation();
   const route = useRoute<SearchScreenRouteProp>();
   const { query } = route.params || { query: '' };
@@ -57,7 +61,8 @@ const SearchScreen = () => {
 
   const handleCoursePress = (course: any) => {
     // Navigation vers les détails du cours
-    navigation.navigate('CourseDetail' as never, { courseId: course.id } as never);
+    // L'écran de détail lit `id` (ou `coursId`) : avec `courseId` il ouvrait un cours vide
+    navigation.navigate('CourseDetail' as never, { id: course.id } as never);
   };
 
   const renderItem = ({ item }: { item: any }) => (
@@ -115,7 +120,7 @@ const SearchScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <ScreenBackground edges={['top', 'left', 'right']}>
       {/* Header avec barre de recherche */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -170,11 +175,13 @@ const SearchScreen = () => {
           )}
         />
       )}
-    </SafeAreaView>
+      <BottomNav />
+    </ScreenBackground>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
